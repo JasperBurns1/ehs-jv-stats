@@ -346,12 +346,14 @@
         const reordered = {};
         columnOrder.forEach(col => {
           let value = '';
+          
           for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
             if (targetCol === col && player[sourceCol] !== undefined) {
               value = player[sourceCol];
               break;
             }
           }
+          
           reordered[col] = value;
         });
         return reordered;
@@ -388,65 +390,11 @@
       return { data: sorted, state: newState };
     }
 
-    // Calculate team totals/averages - FIXED VERSION
-    function calculateTeamStats(stats, isAverages) {
-      if (stats.length === 0) return null;
-
-      const teamStats = { Player: 'TEAM' };
-      const columns = Object.keys(stats[0]).filter(col => col !== 'Player');
-
-      columns.forEach(col => {
-        // GP and GS: use maximum (team games played)
-        if (col === 'GP' || col === 'GS') {
-          const values = stats.map(p => parseFloat(p[col])).filter(v => !isNaN(v));
-          teamStats[col] = values.length > 0 ? Math.max(...values).toFixed(0) : '';
-          return;
-        }
-
-        // Percentages: average only players who attempted (exclude 0%)
-        if (col === 'FG%' || col === '3PT%' || col === 'FT%' || col === 'eFG%' || col === 'TS%') {
-          const validPercentages = stats.map(p => parseFloat(String(p[col]).replace('%', '')))
-                                        .filter(v => !isNaN(v) && v > 0);
-          
-          if (validPercentages.length > 0) {
-            const avg = validPercentages.reduce((a, b) => a + b, 0) / validPercentages.length;
-            teamStats[col] = `${avg.toFixed(0)}%`;
-          } else {
-            teamStats[col] = '0%';
-          }
-          return;
-        }
-
-        // AST/TO ratio: total assists / total turnovers
-        if (col === 'AST/TO') {
-          const totalAst = stats.reduce((sum, p) => sum + (parseFloat(p['AST'] || p['APG'] || 0) || 0), 0);
-          const totalTO = stats.reduce((sum, p) => sum + (parseFloat(p['TO'] || p['TOPG'] || 0) || 0), 0);
-          
-          if (totalTO > 0) {
-            teamStats[col] = (totalAst / totalTO).toFixed(1);
-          } else {
-            teamStats[col] = totalAst > 0 ? '∞' : '0.0';
-          }
-          return;
-        }
-
-        // All other stats: SUM them (total team production)
-        const sum = stats.reduce((total, player) => {
-          const value = parseFloat(String(player[col]).replace('%', ''));
-          return total + (isNaN(value) ? 0 : value);
-        }, 0);
-
-        teamStats[col] = sum.toFixed(1);
-      });
-
-      return teamStats;
-    }
-
     // Render table body
     function renderTableBody(stats, columns) {
       const tbody = document.getElementById('tableBody');
       
-      // Get team stats from Firebase (extracted from GameChanger)
+      // Get team stats from Firebase
       let teamStats = null;
       if (currentStats === 'standard' && currentView === 'averages' && currentData.teamStandardAverages) {
         teamStats = currentData.teamStandardAverages;
@@ -454,15 +402,14 @@
         teamStats = currentData.teamStandardTotals;
       } else if (currentStats === 'advanced' && currentView === 'averages' && currentData.teamAdvancedAverages) {
         teamStats = currentData.teamAdvancedAverages;
-      } else if (currentStats === 'advanced' && currentView === 'totals' && currentData.teamAdvancedTotals) {
-        teamStats = currentData.teamAdvancedTotals;
       }
       
       let rows = stats.map(player => `
         <tr>
           ${columns.map((col, idx) => {
             const value = player[col];
-            const className = idx === 0 ? 'player-name' : '';
+            const isPlayerName = idx === 0;
+            const className = isPlayerName ? 'player-name' : '';
             return `<td class="${className}">${value}</td>`;
           }).join('')}
         </tr>
@@ -470,40 +417,35 @@
 
       // Add team row if we have team stats from GameChanger
       if (teamStats) {
+        const reorderedTeam = {};
+        columns.forEach(col => {
+          if (col === 'Player') {
+            reorderedTeam[col] = 'TEAM';
+          } else {
+            let value = '';
+            for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
+              if (targetCol === col && teamStats[sourceCol] !== undefined) {
+                value = teamStats[sourceCol];
+                break;
+              }
+            }
+            reorderedTeam[col] = value;
+          }
+        });
+
         rows += `
           <tr style="border-top: 2px solid #006554; font-weight: 700; background: #f8f9fa;">
             ${columns.map((col, idx) => {
-              // Map column name back to sanitized key
-              let mappedCol = col;
-              for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
-                if (targetCol === col) {
-                  mappedCol = sanitizeKey(sourceCol);
-                  if (teamStats[mappedCol] !== undefined) break;
-                }
-              }
-              
-              const value = teamStats[mappedCol] || teamStats[col] || '';
-              const className = idx === 0 ? 'player-name' : '';
-              return `<td class="${className}">${value === 'PLAYER' || value === 'Player' ? 'TEAM' : value}</td>`;
+              const value = reorderedTeam[col];
+              const isTeamName = idx === 0;
+              const className = isTeamName ? 'player-name' : '';
+              return `<td class="${className}">${value}</td>`;
             }).join('')}
           </tr>
         `;
       }
 
       tbody.innerHTML = rows;
-    }
-
-    // Helper function to sanitize keys (matches content.js)
-    function sanitizeKey(key) {
-      return key
-        .replace(/%/g, 'Pct')
-        .replace(/\//g, '_')
-        .replace(/\./g, '_')
-        .replace(/\$/g, '')
-        .replace(/#/g, 'No')
-        .replace(/\[/g, '')
-        .replace(/\]/g, '')
-        .trim();
     }
 
     // Render the stats table
@@ -550,6 +492,7 @@
 
       stats = reorderColumns(stats, selectedColumnOrder);
       stats = sortByJerseyNumber(stats);
+      
       originalOrder = [...stats];
       
       sortState = {};
@@ -558,7 +501,11 @@
       const thead = document.getElementById('tableHeader');
       thead.innerHTML = `
         <tr>
-          ${selectedColumnOrder.map(col => `<th data-column="${col}">${col}</th>`).join('')}
+          ${selectedColumnOrder.map(col => `
+            <th data-column="${col}">
+              ${col}
+            </th>
+          `).join('')}
         </tr>
       `;
 
