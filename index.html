@@ -116,6 +116,23 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    th:hover {
+      background: #e8f9f5;
+    }
+
+    th.sorted-desc::after {
+      content: ' ↓';
+      font-size: 12px;
+    }
+
+    th.sorted-asc::after {
+      content: ' ↑';
+      font-size: 12px;
     }
 
     td {
@@ -133,12 +150,6 @@
     }
 
     .player-name {
-      font-weight: 600;
-      color: #006554;
-    }
-
-    .stat-highlight {
-      background: #e8f9f5;
       font-weight: 600;
       color: #006554;
     }
@@ -234,12 +245,20 @@
 
   <script>
     // Configuration
-    const FIREBASE_URL = 'https://ehs-jv-stats-default-rtdb.firebaseio.com'; // You'll set this up
+    const FIREBASE_URL = 'https://ehs-jv-stats-default-rtdb.firebaseio.com';
     const TEAM_ID = 'ehs-jv-hornets';
 
     let currentData = null;
     let currentView = 'averages';
     let currentStats = 'standard';
+    let sortState = {};
+    let originalOrder = [];
+
+    // Column order for each stat type
+    const COLUMN_ORDER = {
+      standard: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      advanced: ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO']
+    };
 
     // Fetch stats from Firebase
     async function fetchStats() {
@@ -274,6 +293,80 @@
       }
     }
 
+    // Extract jersey number from player name
+    function getJerseyNumber(playerName) {
+      const match = playerName.match(/#(\d+)/);
+      return match ? parseInt(match[1]) : 999;
+    }
+
+    // Sort data by jersey number (default)
+    function sortByJerseyNumber(stats) {
+      return [...stats].sort((a, b) => {
+        const numA = getJerseyNumber(a.Player || '');
+        const numB = getJerseyNumber(b.Player || '');
+        return numA - numB;
+      });
+    }
+
+    // Reorder columns to match desired format
+    function reorderColumns(stats, columnOrder) {
+      return stats.map(player => {
+        const reordered = {};
+        columnOrder.forEach(col => {
+          reordered[col] = player[col] || '';
+        });
+        return reordered;
+      });
+    }
+
+    // Sort by column (cycles through: none -> desc -> asc -> none)
+    function sortByColumn(stats, columnName, currentState) {
+      const newState = currentState === 'none' ? 'desc' : 
+                       currentState === 'desc' ? 'asc' : 'none';
+      
+      if (newState === 'none') {
+        return { data: [...originalOrder], state: 'none' };
+      }
+
+      const sorted = [...stats].sort((a, b) => {
+        let valA = a[columnName];
+        let valB = b[columnName];
+
+        // Parse numeric values (remove % signs)
+        const numA = parseFloat(String(valA).replace('%', ''));
+        const numB = parseFloat(String(valB).replace('%', ''));
+
+        // If both are numbers, sort numerically
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return newState === 'desc' ? numB - numA : numA - numB;
+        }
+
+        // Otherwise sort as strings
+        const strA = String(valA).toLowerCase();
+        const strB = String(valB).toLowerCase();
+        return newState === 'desc' ? 
+          strB.localeCompare(strA) : 
+          strA.localeCompare(strB);
+      });
+
+      return { data: sorted, state: newState };
+    }
+
+    // Render table body
+    function renderTableBody(stats, columns) {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = stats.map(player => `
+        <tr>
+          ${columns.map((col, idx) => {
+            const value = player[col];
+            const isPlayerName = idx === 0;
+            const className = isPlayerName ? 'player-name' : '';
+            return `<td class="${className}">${value}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+    }
+
     // Render the stats table
     function renderTable() {
       const table = document.getElementById('statsTable');
@@ -297,7 +390,7 @@
         dataKey = 'advancedTotals';
       }
 
-      const stats = currentData[dataKey] || [];
+      let stats = currentData[dataKey] || [];
 
       if (stats.length === 0) {
         loading.innerHTML = `
@@ -311,29 +404,56 @@
         return;
       }
 
-      // Get column headers from first row
-      const columns = Object.keys(stats[0]);
+      // Reorder columns and sort by jersey number
+      const columnOrder = COLUMN_ORDER[currentStats];
+      stats = reorderColumns(stats, columnOrder);
+      stats = sortByJerseyNumber(stats);
+      
+      // Store original order
+      originalOrder = [...stats];
+      
+      // Reset sort state
+      sortState = {};
+      columnOrder.forEach(col => sortState[col] = 'none');
 
-      // Render header
+      // Render header with click handlers
       const thead = document.getElementById('tableHeader');
       thead.innerHTML = `
         <tr>
-          ${columns.map(col => `<th>${col}</th>`).join('')}
+          ${columnOrder.map(col => `
+            <th data-column="${col}">
+              ${col}
+            </th>
+          `).join('')}
         </tr>
       `;
 
-      // Render body
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = stats.map(player => `
-        <tr>
-          ${columns.map((col, idx) => {
-            const value = player[col];
-            const isPlayerName = idx === 0;
-            const className = isPlayerName ? 'player-name' : '';
-            return `<td class="${className}">${value}</td>`;
-          }).join('')}
-        </tr>
-      `).join('');
+      // Add click handlers to headers
+      thead.querySelectorAll('th').forEach(th => {
+        th.addEventListener('click', () => {
+          const columnName = th.dataset.column;
+          const result = sortByColumn(stats, columnName, sortState[columnName]);
+          stats = result.data;
+          sortState[columnName] = result.state;
+          
+          // Update UI
+          thead.querySelectorAll('th').forEach(h => {
+            h.classList.remove('sorted-asc', 'sorted-desc');
+          });
+          
+          if (result.state === 'asc') {
+            th.classList.add('sorted-asc');
+          } else if (result.state === 'desc') {
+            th.classList.add('sorted-desc');
+          }
+          
+          // Re-render body
+          renderTableBody(stats, columnOrder);
+        });
+      });
+
+      // Render initial body
+      renderTableBody(stats, columnOrder);
 
       loading.style.display = 'none';
       table.style.display = 'table';
@@ -346,7 +466,6 @@
         const stats = btn.dataset.stats;
 
         if (view) {
-          // Update view
           document.querySelectorAll('[data-view]').forEach(b => 
             b.classList.remove('active')
           );
@@ -355,7 +474,6 @@
         }
 
         if (stats) {
-          // Update stats type
           document.querySelectorAll('[data-stats]').forEach(b => 
             b.classList.remove('active')
           );
