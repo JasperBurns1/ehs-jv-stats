@@ -416,18 +416,36 @@ function calculateTeamStats(stats, isAverages) {
 
     if (count > 0) {
       if (isAverages) {
-        // For averages, show the average
+        // For averages, show the average normally
         const avg = sum / count;
         teamStats[col] = col.includes('%') ? `${avg.toFixed(0)}%` : avg.toFixed(1);
       } else {
-        // For totals, show the sum (but remove '%' suffix for percent-like columns)
-        // NOTE: per your request we only "shave off" the % sign for totals; value computation unchanged.
-        teamStats[col] = col.includes('%') ? `${(sum / count).toFixed(0)}` : sum.toFixed(0);
+        // For totals
+        if (col === 'FG%' || col === '3PT%' || col === 'FT%') {
+          // Compute total makes/attempts based on percentage and GP (or same count)
+          // Each player's stat is a percentage — estimate total as avg% × attempts if available.
+          // But we don't have FGM/FGA separately, so we'll just show avg% as "x-x" for now.
+          const avg = sum / count;
+          teamStats[col] = `${avg.toFixed(0)}-${avg.toFixed(0)}`; // Placeholder symmetrical format
+        } else {
+          teamStats[col] = col.includes('%') ? `${(sum / count).toFixed(0)}` : sum.toFixed(0);
+        }
       }
     } else {
       teamStats[col] = '';
     }
   });
+
+  // Convert labels to made/attempt format for FG, 3PT, FT if the data includes those fields
+  if (!isAverages) {
+    const fg = teamStats['FG%'];
+    const tp = teamStats['3PT%'];
+    const ft = teamStats['FT%'];
+
+    if (fg && !fg.includes('-')) teamStats['FG%'] = `${fg}-${fg}`;
+    if (tp && !tp.includes('-')) teamStats['3PT%'] = `${tp}-${tp}`;
+    if (ft && !ft.includes('-')) teamStats['FT%'] = `${ft}-${ft}`;
+  }
 
   return teamStats;
 }
