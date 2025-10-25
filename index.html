@@ -256,7 +256,8 @@
 
     // Column order for each stat type
     const COLUMN_ORDER = {
-      standard: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      standardTotals: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
       advanced: ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO']
     };
 
@@ -479,14 +480,20 @@
 
       // Get the appropriate data set
       let dataKey = '';
+      let columnOrder = [];
+      
       if (currentStats === 'standard' && currentView === 'averages') {
         dataKey = 'standardAverages';
+        columnOrder = COLUMN_ORDER.standardAverages;
       } else if (currentStats === 'standard' && currentView === 'totals') {
         dataKey = 'standardTotals';
+        columnOrder = COLUMN_ORDER.standardTotals;
       } else if (currentStats === 'advanced' && currentView === 'averages') {
         dataKey = 'advancedAverages';
+        columnOrder = COLUMN_ORDER.advanced;
       } else {
         dataKey = 'advancedTotals';
+        columnOrder = COLUMN_ORDER.advanced;
       }
 
       let stats = currentData[dataKey] || [];
