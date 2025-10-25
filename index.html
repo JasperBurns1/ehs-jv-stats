@@ -263,7 +263,7 @@
     // Column order for each stat type
     const COLUMN_ORDER = {
       standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
-      standardTotals: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      standardTotals: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG', '3PT', 'FT', 'TO'],
       advanced: ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO']
     };
 
@@ -413,21 +413,21 @@
         } else if (col === 'GS') {
           // GS should be blank
           totals.GS = '';
-        } else if (col === 'FG%' || col === '3PT%' || col === 'FT%') {
-          // For shooting stats in totals, convert from percentages to made-attempted format
+        } else if (col === 'FG' || col === '3PT' || col === 'FT') {
+          // For shooting stats in totals, sum made-attempted format
           let totalMade = 0;
           let totalAttempted = 0;
           
+          // Map to the percentage column name to get the data
+          const sourceCol = col + '%';
+          
           stats.forEach(player => {
-            const value = player[col];
+            const value = player[sourceCol];
             if (value && typeof value === 'string' && value.includes('-')) {
-              // Already in made-attempted format
+              // Already in made-attempted format (e.g., "3-6")
               const parts = value.split('-');
               totalMade += parseInt(parts[0]) || 0;
               totalAttempted += parseInt(parts[1]) || 0;
-            } else if (value && typeof value === 'string' && value.includes('%')) {
-              // Skip percentage format - we can't reverse calculate from percentage
-              // This shouldn't happen if data is correct
             }
           });
           
