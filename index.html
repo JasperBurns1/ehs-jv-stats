@@ -425,11 +425,9 @@
           let totalMade = 0;
           let totalAttempted = 0;
           
-          // Map to the percentage column name to get the data
-          const sourceCol = col + '%';
-          
+          // After reorderColumns, the data is under the col name (not col + '%')
           stats.forEach(player => {
-            const value = player[sourceCol];
+            const value = player[col];
             if (value && typeof value === 'string' && value.includes('-')) {
               // Already in made-attempted format (e.g., "3-6")
               const parts = value.split('-');
