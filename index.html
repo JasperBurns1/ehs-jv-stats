@@ -396,40 +396,42 @@
     }
 
     // Calculate team totals/averages
-    function calculateTeamStats(stats, isAverages) {
-      if (stats.length === 0) return null;
+function calculateTeamStats(stats, isAverages) {
+  if (stats.length === 0) return null;
 
-      const teamStats = { Player: 'TEAM' };
-      const columns = Object.keys(stats[0]).filter(col => col !== 'Player');
+  const teamStats = { Player: 'TEAM' };
+  const columns = Object.keys(stats[0]).filter(col => col !== 'Player');
 
-      columns.forEach(col => {
-        let sum = 0;
-        let count = 0;
+  columns.forEach(col => {
+    let sum = 0;
+    let count = 0;
 
-        stats.forEach(player => {
-          const value = parseFloat(String(player[col]).replace('%', ''));
-          if (!isNaN(value)) {
-            sum += value;
-            count++;
-          }
-        });
+    stats.forEach(player => {
+      const value = parseFloat(String(player[col]).replace('%', ''));
+      if (!isNaN(value)) {
+        sum += value;
+        count++;
+      }
+    });
 
-        if (count > 0) {
-          if (isAverages) {
-            // For averages, show the average
-            const avg = sum / count;
-            teamStats[col] = col.includes('%') ? `${avg.toFixed(0)}%` : avg.toFixed(1);
-          } else {
-            // For totals, show the sum
-            teamStats[col] = col.includes('%') ? `${(sum / count).toFixed(0)}%` : sum.toFixed(0);
-          }
-        } else {
-          teamStats[col] = '';
-        }
-      });
-
-      return teamStats;
+    if (count > 0) {
+      if (isAverages) {
+        // For averages, show the average
+        const avg = sum / count;
+        teamStats[col] = col.includes('%') ? `${avg.toFixed(0)}%` : avg.toFixed(1);
+      } else {
+        // For totals, show the sum (but remove '%' suffix for percent-like columns)
+        // NOTE: per your request we only "shave off" the % sign for totals; value computation unchanged.
+        teamStats[col] = col.includes('%') ? `${(sum / count).toFixed(0)}` : sum.toFixed(0);
+      }
+    } else {
+      teamStats[col] = '';
     }
+  });
+
+  return teamStats;
+}
+
 
     // Render table body
     function renderTableBody(stats, columns) {
