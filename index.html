@@ -263,34 +263,34 @@
 
     // Map GameChanger column names to our desired names
     const COLUMN_MAPPING = {
-      'PLAYER': 'Player',
-      'Player': 'Player',
-      'GP': 'GP',
-      'GS': 'GS',
-      'PPG': 'PTS',    // Averages use PPG
-      'PTS': 'PTS',    // Totals use PTS
-      'PFPG': 'PF',    // Averages use PFPG
-      'PF': 'PF',      // Totals use PF
-      'RPG': 'REB',    // Averages use RPG
-      'REB': 'REB',    // Totals use REB
-      'APG': 'AST',    // Averages use APG
-      'AST': 'AST',    // Totals use AST
-      'SPG': 'STL',    // Averages use SPG
-      'STL': 'STL',    // Totals use STL
-      'BPG': 'BLK',    // Averages use BPG
-      'BLK': 'BLK',    // Totals use BLK
-      'TOPG': 'TO',    // Averages use TOPG
-      'TO': 'TO',      // Totals use TO
-      'FG%': 'FG%',    // Percentages are the same
-      'FG': 'FG%',     // Totals show FG makes, we want %
-      '3PT%': '3PT%',
-      '3PT': '3PT%',   // Totals show 3PT makes
-      'FT%': 'FT%',
-      'FT': 'FT%',     // Totals show FT makes
-      'eFG%': 'eFG%',
-      'TS%': 'TS%',
-      'AST/TO': 'AST/TO'
-    };
+  'PLAYER': 'Player',
+  'Player': 'Player',
+  'GP': 'GP',
+  'GS': 'GS',
+  'PPG': 'PTS',
+  'PTS': 'PTS',
+  'PFPG': 'PF',
+  'PF': 'PF',
+  'RPG': 'REB',
+  'REB': 'REB',
+  'APG': 'AST',
+  'AST': 'AST',
+  'SPG': 'STL',
+  'STL': 'STL',
+  'BPG': 'BLK',
+  'BLK': 'BLK',
+  'TOPG': 'TO',
+  'TO': 'TO',
+  'FGPct': 'FG%',      // Changed from 'FG%'
+  'FG': 'FG%',
+  '3PTPct': '3PT%',    // Changed from '3PT%'
+  '3PT': '3PT%',
+  'FTPct': 'FT%',      // Changed from 'FT%'
+  'FT': 'FT%',
+  'eFGPct': 'eFG%',    // Changed from 'eFG%'
+  'TSPct': 'TS%',      // Changed from 'TS%'
+  'AST_TO': 'AST/TO'   // Changed from 'AST/TO'
+};
 
     // Fetch stats from Firebase
     async function fetchStats() {
