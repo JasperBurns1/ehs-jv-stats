@@ -405,6 +405,10 @@
 
     // Calculate totals from individual player stats
     function calculateTotalsFromPlayers(stats, columns) {
+      console.log('=== calculateTotalsFromPlayers START ===');
+      console.log('Stats passed in:', stats);
+      console.log('Columns:', columns);
+      
       const totals = {};
       
       columns.forEach(col => {
@@ -422,20 +426,28 @@
           totals.GS = '';
         } else if (col === 'FG' || col === '3PT' || col === 'FT') {
           // For shooting stats in totals, sum made-attempted format
+          console.log(`\n--- Processing ${col} ---`);
           let totalMade = 0;
           let totalAttempted = 0;
           
           // After reorderColumns, the data is under the col name (not col + '%')
-          stats.forEach(player => {
+          stats.forEach((player, index) => {
             const value = player[col];
+            console.log(`Player ${index} (${player.Player}): ${col} = "${value}"`);
             if (value && typeof value === 'string' && value.includes('-')) {
               // Already in made-attempted format (e.g., "3-6")
               const parts = value.split('-');
-              totalMade += parseInt(parts[0]) || 0;
-              totalAttempted += parseInt(parts[1]) || 0;
+              const made = parseInt(parts[0]) || 0;
+              const attempted = parseInt(parts[1]) || 0;
+              console.log(`  -> Parsed: ${made} made, ${attempted} attempted`);
+              totalMade += made;
+              totalAttempted += attempted;
+            } else {
+              console.log(`  -> NOT in made-attempted format or empty`);
             }
           });
           
+          console.log(`${col} TOTAL: ${totalMade}-${totalAttempted}`);
           totals[col] = `${totalMade}-${totalAttempted}`;
         } else {
           // Sum all other stats
@@ -451,6 +463,8 @@
         }
       });
       
+      console.log('Final totals object:', totals);
+      console.log('=== calculateTotalsFromPlayers END ===\n');
       return totals;
     }
 
