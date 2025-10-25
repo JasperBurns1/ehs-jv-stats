@@ -480,20 +480,20 @@
 
       // Get the appropriate data set
       let dataKey = '';
-      let columnOrder = [];
+      let selectedColumnOrder = [];
       
       if (currentStats === 'standard' && currentView === 'averages') {
         dataKey = 'standardAverages';
-        columnOrder = COLUMN_ORDER.standardAverages;
+        selectedColumnOrder = COLUMN_ORDER.standardAverages;
       } else if (currentStats === 'standard' && currentView === 'totals') {
         dataKey = 'standardTotals';
-        columnOrder = COLUMN_ORDER.standardTotals;
+        selectedColumnOrder = COLUMN_ORDER.standardTotals;
       } else if (currentStats === 'advanced' && currentView === 'averages') {
         dataKey = 'advancedAverages';
-        columnOrder = COLUMN_ORDER.advanced;
+        selectedColumnOrder = COLUMN_ORDER.advanced;
       } else {
         dataKey = 'advancedTotals';
-        columnOrder = COLUMN_ORDER.advanced;
+        selectedColumnOrder = COLUMN_ORDER.advanced;
       }
 
       let stats = currentData[dataKey] || [];
@@ -511,8 +511,7 @@
       }
 
       // Reorder columns and sort by jersey number
-      const columnOrder = COLUMN_ORDER[currentStats];
-      stats = reorderColumns(stats, columnOrder);
+      stats = reorderColumns(stats, selectedColumnOrder);
       stats = sortByJerseyNumber(stats);
       
       // Store original order
@@ -520,13 +519,13 @@
       
       // Reset sort state
       sortState = {};
-      columnOrder.forEach(col => sortState[col] = 'none');
+      selectedColumnOrder.forEach(col => sortState[col] = 'none');
 
       // Render header with click handlers
       const thead = document.getElementById('tableHeader');
       thead.innerHTML = `
         <tr>
-          ${columnOrder.map(col => `
+          ${selectedColumnOrder.map(col => `
             <th data-column="${col}">
               ${col}
             </th>
@@ -554,12 +553,12 @@
           }
           
           // Re-render body
-          renderTableBody(stats, columnOrder);
+          renderTableBody(stats, selectedColumnOrder);
         });
       });
 
       // Render initial body
-      renderTableBody(stats, columnOrder);
+      renderTableBody(stats, selectedColumnOrder);
 
       loading.style.display = 'none';
       table.style.display = 'table';
