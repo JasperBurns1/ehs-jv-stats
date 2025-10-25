@@ -494,13 +494,17 @@
         </tr>
       `).join('');
 
-      // Add team row if we have team stats from GameChanger
+      // Add team row if we have team stats
       if (teamStats) {
         const reorderedTeam = {};
         columns.forEach(col => {
           if (col === 'Player') {
             reorderedTeam[col] = 'TEAM';
+          } else if (teamStats[col] !== undefined) {
+            // If teamStats already has the column name directly (from calculateTotalsFromPlayers), use it
+            reorderedTeam[col] = teamStats[col];
           } else {
+            // Otherwise, try to map from GameChanger column names
             let value = '';
             for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
               if (targetCol === col && teamStats[sourceCol] !== undefined) {
