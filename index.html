@@ -126,26 +126,22 @@
     }
 
     th.sorted-desc::after {
-      content: ' ↓';
-      font-size: 12px;
+      content: ' ▼';
+      font-size: 10px;
     }
 
     th.sorted-asc::after {
-      content: ' ↑';
-      font-size: 12px;
+      content: ' ▲';
+      font-size: 10px;
     }
 
     td {
-      padding: 15px 12px;
+      padding: 12px;
       border-bottom: 1px solid #eee;
       font-size: 14px;
     }
 
-    tbody tr {
-      transition: background 0.2s;
-    }
-
-    tbody tr:hover {
+    tr:hover {
       background: #f8f9fa;
     }
 
@@ -156,17 +152,16 @@
 
     .loading {
       text-align: center;
-      padding: 60px;
-      color: white;
-      font-size: 1.2em;
+      padding: 60px 20px;
+      color: #666;
     }
 
     .spinner {
-      border: 4px solid rgba(255,255,255,0.3);
-      border-top: 4px solid #00F092;
-      border-radius: 50%;
       width: 50px;
       height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #006554;
+      border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
     }
@@ -182,18 +177,29 @@
       border-radius: 8px;
       padding: 20px;
       margin: 20px 0;
+    }
+
+    .error h3 {
+      color: #856404;
+      margin-bottom: 10px;
+    }
+
+    .error p {
       color: #856404;
     }
 
     .no-stats {
       text-align: center;
-      padding: 60px 20px;
-      color: #666;
+      padding: 40px 20px;
     }
 
     .no-stats h2 {
       color: #006554;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
+    }
+
+    .no-stats p {
+      color: #666;
     }
 
     @media (max-width: 768px) {
@@ -390,6 +396,59 @@
       return { data: sorted, state: newState };
     }
 
+    // Calculate totals from individual player stats
+    function calculateTotalsFromPlayers(stats, columns) {
+      const totals = {};
+      
+      columns.forEach(col => {
+        if (col === 'Player') {
+          totals[col] = 'Team';
+        } else if (col === 'GP') {
+          // GP comes from team averages
+          if (currentData.teamStandardAverages && currentData.teamStandardAverages.GP) {
+            totals.GP = currentData.teamStandardAverages.GP;
+          } else {
+            totals.GP = '';
+          }
+        } else if (col === 'GS') {
+          // GS should be blank
+          totals.GS = '';
+        } else if (col === 'FG%' || col === '3PT%' || col === 'FT%') {
+          // For shooting stats in totals, convert from percentages to made-attempted format
+          let totalMade = 0;
+          let totalAttempted = 0;
+          
+          stats.forEach(player => {
+            const value = player[col];
+            if (value && typeof value === 'string' && value.includes('-')) {
+              // Already in made-attempted format
+              const parts = value.split('-');
+              totalMade += parseInt(parts[0]) || 0;
+              totalAttempted += parseInt(parts[1]) || 0;
+            } else if (value && typeof value === 'string' && value.includes('%')) {
+              // Skip percentage format - we can't reverse calculate from percentage
+              // This shouldn't happen if data is correct
+            }
+          });
+          
+          totals[col] = `${totalMade}-${totalAttempted}`;
+        } else {
+          // Sum all other stats
+          let sum = 0;
+          stats.forEach(player => {
+            const value = player[col];
+            const numValue = parseFloat(value);
+            if (!isNaN(numValue)) {
+              sum += numValue;
+            }
+          });
+          totals[col] = sum;
+        }
+      });
+      
+      return totals;
+    }
+
     // Render table body
     function renderTableBody(stats, columns) {
       const tbody = document.getElementById('tableBody');
@@ -398,8 +457,9 @@
       let teamStats = null;
       if (currentStats === 'standard' && currentView === 'averages' && currentData.teamStandardAverages) {
         teamStats = currentData.teamStandardAverages;
-      } else if (currentStats === 'standard' && currentView === 'totals' && currentData.teamStandardTotals) {
-        teamStats = currentData.teamStandardTotals;
+      } else if (currentStats === 'standard' && currentView === 'totals') {
+        // For Totals/Standard, calculate from player stats instead of using database
+        teamStats = calculateTotalsFromPlayers(stats, columns);
       } else if (currentStats === 'advanced' && currentView === 'averages' && currentData.teamAdvancedAverages) {
         teamStats = currentData.teamAdvancedAverages;
       }
