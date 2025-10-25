@@ -353,8 +353,15 @@
         columnOrder.forEach(col => {
           let value = '';
           
+          // Special handling for totals shooting stats without %
+          // If looking for 'FG', '3PT', or 'FT', check for the percentage version in source data
+          let searchCol = col;
+          if (currentView === 'totals' && (col === 'FG' || col === '3PT' || col === 'FT')) {
+            searchCol = col + '%';
+          }
+          
           for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
-            if (targetCol === col && player[sourceCol] !== undefined) {
+            if (targetCol === searchCol && player[sourceCol] !== undefined) {
               value = player[sourceCol];
               break;
             }
