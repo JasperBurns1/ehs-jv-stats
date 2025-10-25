@@ -118,27 +118,21 @@
       white-space: nowrap;
       cursor: pointer;
       user-select: none;
-      position: relative;
+      transition: background 0.2s;
     }
 
     th:hover {
       background: #e8f9f5;
     }
 
-    th.sortable::after {
-      content: ' ⇅';
-      color: #ccc;
+    th.sorted-desc::after {
+      content: ' ↓';
       font-size: 12px;
     }
 
-    th.sort-asc::after {
-      content: ' ▲';
-      color: #006554;
-    }
-
-    th.sort-desc::after {
-      content: ' ▼';
-      color: #006554;
+    th.sorted-asc::after {
+      content: ' ↑';
+      font-size: 12px;
     }
 
     td {
@@ -221,7 +215,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>🏀 EHS JV Hornets</h1>
+      <h1>🏀 Essex High School Junior Varsity Hornets Stats</h1>
       <div class="record" id="record">Loading...</div>
       <div class="last-updated" id="lastUpdated"></div>
     </header>
@@ -231,7 +225,7 @@
         <button class="btn active" data-view="averages">Averages</button>
         <button class="btn" data-view="totals">Totals</button>
       </div>
-      <div class="btn-group">
+      <div class="btn-group" id="statsTypeGroup">
         <button class="btn active" data-stats="standard">Standard</button>
         <button class="btn" data-stats="advanced">Advanced</button>
       </div>
@@ -251,18 +245,52 @@
 
   <script>
     // Configuration
-    const FIREBASE_URL = 'YOUR_FIREBASE_URL_HERE';
+    const FIREBASE_URL = 'https://ehs-jv-stats-default-rtdb.firebaseio.com';
     const TEAM_ID = 'ehs-jv-hornets';
-
-    // Desired column order
-    const COLUMN_ORDER = ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'];
-    const ADVANCED_COLUMN_ORDER = ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO'];
 
     let currentData = null;
     let currentView = 'averages';
     let currentStats = 'standard';
-    let sortColumn = null;
-    let sortDirection = 'default'; // 'default', 'asc', 'desc'
+    let sortState = {};
+    let originalOrder = [];
+
+    // Column order for each stat type
+    const COLUMN_ORDER = {
+      standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      standardTotals: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      advanced: ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO']
+    };
+
+    // Map GameChanger column names to our desired names
+    const COLUMN_MAPPING = {
+      'PLAYER': 'Player',
+      'Player': 'Player',
+      'GP': 'GP',
+      'GS': 'GS',
+      'PPG': 'PTS',
+      'PTS': 'PTS',
+      'PFPG': 'PF',
+      'PF': 'PF',
+      'RPG': 'REB',
+      'REB': 'REB',
+      'APG': 'AST',
+      'AST': 'AST',
+      'SPG': 'STL',
+      'STL': 'STL',
+      'BPG': 'BLK',
+      'BLK': 'BLK',
+      'TOPG': 'TO',
+      'TO': 'TO',
+      'FGPct': 'FG%',
+      'FG': 'FG%',
+      '3PTPct': '3PT%',
+      '3PT': '3PT%',
+      'FTPct': 'FT%',
+      'FT': 'FT%',
+      'eFGPct': 'eFG%',
+      'TSPct': 'TS%',
+      'AST_TO': 'AST/TO'
+    };
 
     // Fetch stats from Firebase
     async function fetchStats() {
@@ -298,77 +326,152 @@
     }
 
     // Extract jersey number from player name
-    function extractJerseyNumber(playerName) {
+    function getJerseyNumber(playerName) {
       const match = playerName.match(/#(\d+)/);
       return match ? parseInt(match[1]) : 999;
     }
 
-    // Sort data
-    function sortData(data, column) {
-      if (!data || data.length === 0) return data;
-
-      const sorted = [...data];
-
-      if (sortDirection === 'default') {
-        // Sort by jersey number
-        sorted.sort((a, b) => {
-          const numA = extractJerseyNumber(a.Player || '');
-          const numB = extractJerseyNumber(b.Player || '');
-          return numA - numB;
-        });
-      } else {
-        sorted.sort((a, b) => {
-          let valA = a[column];
-          let valB = b[column];
-
-          // Handle player names specially
-          if (column === 'Player') {
-            const numA = extractJerseyNumber(valA || '');
-            const numB = extractJerseyNumber(valB || '');
-            return sortDirection === 'asc' ? numA - numB : numB - numA;
-          }
-
-          // Convert to numbers if possible
-          const numA = parseFloat(valA);
-          const numB = parseFloat(valB);
-
-          if (!isNaN(numA) && !isNaN(numB)) {
-            return sortDirection === 'asc' ? numA - numB : numB - numA;
-          }
-
-          // String comparison
-          valA = String(valA || '');
-          valB = String(valB || '');
-          return sortDirection === 'asc' ? 
-            valA.localeCompare(valB) : 
-            valB.localeCompare(valA);
-        });
-      }
-
-      return sorted;
+    // Sort data by jersey number (default)
+    function sortByJerseyNumber(stats) {
+      return [...stats].sort((a, b) => {
+        const numA = getJerseyNumber(a.Player || '');
+        const numB = getJerseyNumber(b.Player || '');
+        return numA - numB;
+      });
     }
 
-    // Reorder columns based on desired order
-    function reorderColumns(stats) {
-      if (!stats || stats.length === 0) return stats;
-
-      const order = currentStats === 'advanced' ? ADVANCED_COLUMN_ORDER : COLUMN_ORDER;
-      
+    // Reorder columns to match desired format
+    function reorderColumns(stats, columnOrder) {
       return stats.map(player => {
         const reordered = {};
-        order.forEach(col => {
-          if (player.hasOwnProperty(col)) {
-            reordered[col] = player[col];
+        columnOrder.forEach(col => {
+          let value = '';
+          for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
+            if (targetCol === col && player[sourceCol] !== undefined) {
+              value = player[sourceCol];
+              break;
+            }
           }
-        });
-        // Add any remaining columns that weren't in our order
-        Object.keys(player).forEach(key => {
-          if (!reordered.hasOwnProperty(key)) {
-            reordered[key] = player[key];
-          }
+          reordered[col] = value;
         });
         return reordered;
       });
+    }
+
+    // Sort by column (cycles through: none -> desc -> asc -> none)
+    function sortByColumn(stats, columnName, currentState) {
+      const newState = currentState === 'none' ? 'desc' : 
+                       currentState === 'desc' ? 'asc' : 'none';
+      
+      if (newState === 'none') {
+        return { data: [...originalOrder], state: 'none' };
+      }
+
+      const sorted = [...stats].sort((a, b) => {
+        let valA = a[columnName];
+        let valB = b[columnName];
+
+        const numA = parseFloat(String(valA).replace('%', ''));
+        const numB = parseFloat(String(valB).replace('%', ''));
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return newState === 'desc' ? numB - numA : numA - numB;
+        }
+
+        const strA = String(valA).toLowerCase();
+        const strB = String(valB).toLowerCase();
+        return newState === 'desc' ? 
+          strB.localeCompare(strA) : 
+          strA.localeCompare(strB);
+      });
+
+      return { data: sorted, state: newState };
+    }
+
+    // Calculate team totals/averages - FIXED VERSION
+    function calculateTeamStats(stats, isAverages) {
+      if (stats.length === 0) return null;
+
+      const teamStats = { Player: 'TEAM' };
+      const columns = Object.keys(stats[0]).filter(col => col !== 'Player');
+
+      columns.forEach(col => {
+        // GP and GS: use maximum (team games played)
+        if (col === 'GP' || col === 'GS') {
+          const values = stats.map(p => parseFloat(p[col])).filter(v => !isNaN(v));
+          teamStats[col] = values.length > 0 ? Math.max(...values).toFixed(0) : '';
+          return;
+        }
+
+        // Percentages: average only players who attempted (exclude 0%)
+        if (col === 'FG%' || col === '3PT%' || col === 'FT%' || col === 'eFG%' || col === 'TS%') {
+          const validPercentages = stats.map(p => parseFloat(String(p[col]).replace('%', '')))
+                                        .filter(v => !isNaN(v) && v > 0);
+          
+          if (validPercentages.length > 0) {
+            const avg = validPercentages.reduce((a, b) => a + b, 0) / validPercentages.length;
+            teamStats[col] = `${avg.toFixed(0)}%`;
+          } else {
+            teamStats[col] = '0%';
+          }
+          return;
+        }
+
+        // AST/TO ratio: total assists / total turnovers
+        if (col === 'AST/TO') {
+          const totalAst = stats.reduce((sum, p) => sum + (parseFloat(p['AST'] || p['APG'] || 0) || 0), 0);
+          const totalTO = stats.reduce((sum, p) => sum + (parseFloat(p['TO'] || p['TOPG'] || 0) || 0), 0);
+          
+          if (totalTO > 0) {
+            teamStats[col] = (totalAst / totalTO).toFixed(1);
+          } else {
+            teamStats[col] = totalAst > 0 ? '∞' : '0.0';
+          }
+          return;
+        }
+
+        // All other stats: SUM them (total team production)
+        const sum = stats.reduce((total, player) => {
+          const value = parseFloat(String(player[col]).replace('%', ''));
+          return total + (isNaN(value) ? 0 : value);
+        }, 0);
+
+        teamStats[col] = sum.toFixed(1);
+      });
+
+      return teamStats;
+    }
+
+    // Render table body
+    function renderTableBody(stats, columns) {
+      const tbody = document.getElementById('tableBody');
+      
+      const isAverages = currentView === 'averages';
+      const teamStats = calculateTeamStats(stats, isAverages);
+      
+      let rows = stats.map(player => `
+        <tr>
+          ${columns.map((col, idx) => {
+            const value = player[col];
+            const className = idx === 0 ? 'player-name' : '';
+            return `<td class="${className}">${value}</td>`;
+          }).join('')}
+        </tr>
+      `).join('');
+
+      if (teamStats) {
+        rows += `
+          <tr style="border-top: 2px solid #006554; font-weight: 700; background: #f8f9fa;">
+            ${columns.map((col, idx) => {
+              const value = teamStats[col];
+              const className = idx === 0 ? 'player-name' : '';
+              return `<td class="${className}">${value}</td>`;
+            }).join('')}
+          </tr>
+        `;
+      }
+
+      tbody.innerHTML = rows;
     }
 
     // Render the stats table
@@ -382,16 +485,21 @@
         return;
       }
 
-      // Get the appropriate data set
       let dataKey = '';
+      let selectedColumnOrder = [];
+      
       if (currentStats === 'standard' && currentView === 'averages') {
         dataKey = 'standardAverages';
+        selectedColumnOrder = COLUMN_ORDER.standardAverages;
       } else if (currentStats === 'standard' && currentView === 'totals') {
         dataKey = 'standardTotals';
+        selectedColumnOrder = COLUMN_ORDER.standardTotals;
       } else if (currentStats === 'advanced' && currentView === 'averages') {
         dataKey = 'advancedAverages';
+        selectedColumnOrder = COLUMN_ORDER.advanced;
       } else {
         dataKey = 'advancedTotals';
+        selectedColumnOrder = COLUMN_ORDER.advanced;
       }
 
       let stats = currentData[dataKey] || [];
@@ -408,75 +516,45 @@
         return;
       }
 
-      // Reorder columns
-      stats = reorderColumns(stats);
+      stats = reorderColumns(stats, selectedColumnOrder);
+      stats = sortByJerseyNumber(stats);
+      originalOrder = [...stats];
+      
+      sortState = {};
+      selectedColumnOrder.forEach(col => sortState[col] = 'none');
 
-      // Sort data
-      if (sortColumn) {
-        stats = sortData(stats, sortColumn);
-      } else {
-        // Default sort by jersey number
-        stats = sortData(stats, 'Player');
-        sortDirection = 'default';
-      }
-
-      // Get column headers
-      const columns = stats.length > 0 ? Object.keys(stats[0]) : [];
-
-      // Render header
       const thead = document.getElementById('tableHeader');
       thead.innerHTML = `
         <tr>
-          ${columns.map(col => `
-            <th class="sortable ${sortColumn === col ? 'sort-' + sortDirection : ''}" 
-                data-column="${col}">
-              ${col}
-            </th>
-          `).join('')}
+          ${selectedColumnOrder.map(col => `<th data-column="${col}">${col}</th>`).join('')}
         </tr>
       `;
 
-      // Add click handlers to headers
       thead.querySelectorAll('th').forEach(th => {
         th.addEventListener('click', () => {
-          const column = th.dataset.column;
-          handleSort(column);
+          const columnName = th.dataset.column;
+          const result = sortByColumn(stats, columnName, sortState[columnName]);
+          stats = result.data;
+          sortState[columnName] = result.state;
+          
+          thead.querySelectorAll('th').forEach(h => {
+            h.classList.remove('sorted-asc', 'sorted-desc');
+          });
+          
+          if (result.state === 'asc') {
+            th.classList.add('sorted-asc');
+          } else if (result.state === 'desc') {
+            th.classList.add('sorted-desc');
+          }
+          
+          renderTableBody(stats, selectedColumnOrder);
         });
       });
 
-      // Render body
-      const tbody = document.getElementById('tableBody');
-      tbody.innerHTML = stats.map(player => `
-        <tr>
-          ${columns.map((col, idx) => {
-            const value = player[col];
-            const className = idx === 0 ? 'player-name' : '';
-            return `<td class="${className}">${value}</td>`;
-          }).join('')}
-        </tr>
-      `).join('');
+      renderTableBody(stats, selectedColumnOrder);
 
       loading.style.display = 'none';
       table.style.display = 'table';
-    }
-
-    // Handle column sorting
-    function handleSort(column) {
-      if (sortColumn === column) {
-        // Cycle through: asc -> desc -> default
-        if (sortDirection === 'asc') {
-          sortDirection = 'desc';
-        } else if (sortDirection === 'desc') {
-          sortDirection = 'default';
-          sortColumn = null;
-        } else {
-          sortDirection = 'asc';
-        }
-      } else {
-        sortColumn = column;
-        sortDirection = 'asc';
-      }
-      renderTable();
     }
 
     // Handle button clicks
@@ -491,6 +569,18 @@
           );
           btn.classList.add('active');
           currentView = view;
+          
+          const statsButtons = document.querySelectorAll('[data-stats]');
+          if (view === 'totals') {
+            statsButtons[1].style.display = 'none';
+            if (currentStats === 'advanced') {
+              currentStats = 'standard';
+              statsButtons[0].classList.add('active');
+              statsButtons[1].classList.remove('active');
+            }
+          } else {
+            statsButtons[1].style.display = 'block';
+          }
         }
 
         if (stats) {
@@ -501,17 +591,11 @@
           currentStats = stats;
         }
 
-        // Reset sort when changing views
-        sortColumn = null;
-        sortDirection = 'default';
         renderTable();
       });
     });
 
-    // Auto-refresh every 30 seconds
     setInterval(fetchStats, 30000);
-
-    // Initial load
     fetchStats();
   </script>
 </body>
