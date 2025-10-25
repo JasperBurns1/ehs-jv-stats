@@ -446,8 +446,17 @@
     function renderTableBody(stats, columns) {
       const tbody = document.getElementById('tableBody');
       
-      const isAverages = currentView === 'averages';
-      const teamStats = calculateTeamStats(stats, isAverages);
+      // Get team stats from Firebase (extracted from GameChanger)
+      let teamStats = null;
+      if (currentStats === 'standard' && currentView === 'averages' && currentData.teamStandardAverages) {
+        teamStats = currentData.teamStandardAverages;
+      } else if (currentStats === 'standard' && currentView === 'totals' && currentData.teamStandardTotals) {
+        teamStats = currentData.teamStandardTotals;
+      } else if (currentStats === 'advanced' && currentView === 'averages' && currentData.teamAdvancedAverages) {
+        teamStats = currentData.teamAdvancedAverages;
+      } else if (currentStats === 'advanced' && currentView === 'totals' && currentData.teamAdvancedTotals) {
+        teamStats = currentData.teamAdvancedTotals;
+      }
       
       let rows = stats.map(player => `
         <tr>
@@ -459,19 +468,42 @@
         </tr>
       `).join('');
 
+      // Add team row if we have team stats from GameChanger
       if (teamStats) {
         rows += `
           <tr style="border-top: 2px solid #006554; font-weight: 700; background: #f8f9fa;">
             ${columns.map((col, idx) => {
-              const value = teamStats[col];
+              // Map column name back to sanitized key
+              let mappedCol = col;
+              for (const [sourceCol, targetCol] of Object.entries(COLUMN_MAPPING)) {
+                if (targetCol === col) {
+                  mappedCol = sanitizeKey(sourceCol);
+                  if (teamStats[mappedCol] !== undefined) break;
+                }
+              }
+              
+              const value = teamStats[mappedCol] || teamStats[col] || '';
               const className = idx === 0 ? 'player-name' : '';
-              return `<td class="${className}">${value}</td>`;
+              return `<td class="${className}">${value === 'PLAYER' || value === 'Player' ? 'TEAM' : value}</td>`;
             }).join('')}
           </tr>
         `;
       }
 
       tbody.innerHTML = rows;
+    }
+
+    // Helper function to sanitize keys (matches content.js)
+    function sanitizeKey(key) {
+      return key
+        .replace(/%/g, 'Pct')
+        .replace(/\//g, '_')
+        .replace(/\./g, '_')
+        .replace(/\$/g, '')
+        .replace(/#/g, 'No')
+        .replace(/\[/g, '')
+        .replace(/\]/g, '')
+        .trim();
     }
 
     // Render the stats table
