@@ -425,20 +425,15 @@ function sortByColumn(stats, columnName, currentState) {
         columnName === 'FG%' || columnName === '3PT%' || columnName === 'FT%') {
       
       const parseShootingStat = (val) => {
-        if (!val || typeof val !== 'string') return { made: 0, attempts: 0, pct: 0 };
+        if (!val || typeof val !== 'string') return { made: 0, attempts: 0 };
         
-        // Handle both "X-Y" format and percentage format
+        // Handle "X-Y" format
         if (val.includes('-')) {
           const [made, attempts] = val.split('-').map(v => parseInt(v) || 0);
-          return {
-            made,
-            attempts,
-            pct: attempts === 0 ? 0 : (made / attempts)
-          };
+          return { made, attempts };
         } else {
           // Handle percentage format (e.g., "45.6%")
-          const pct = parseFloat(val.replace('%', '')) / 100;
-          return { made: 0, attempts: 0, pct };
+          return { made: 0, attempts: 0 };
         }
       };
 
@@ -453,24 +448,17 @@ function sortByColumn(stats, columnName, currentState) {
       if (aIsZeroZero) return 1;  // Move a to bottom
       if (bIsZeroZero) return -1; // Move b to bottom
 
-      // Compare percentages first
-      if (statsA.pct !== statsB.pct) {
-        return newState === 'desc' ? 
-          statsB.pct - statsA.pct : 
-          statsA.pct - statsB.pct;
-      }
-
-      // If percentages are equal, compare made shots
+      // First compare made shots
       if (statsA.made !== statsB.made) {
         return newState === 'desc' ? 
           statsB.made - statsA.made : 
           statsA.made - statsB.made;
       }
 
-      // If made shots are equal, compare attempts
+      // If made shots are equal, compare attempts (fewer attempts ranks higher)
       return newState === 'desc' ? 
-        statsB.attempts - statsA.attempts : 
-        statsA.attempts - statsB.attempts;
+        statsA.attempts - statsB.attempts : 
+        statsB.attempts - statsA.attempts;
     }
 
     // Handle non-shooting stat columns as before
