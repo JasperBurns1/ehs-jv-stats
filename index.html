@@ -366,17 +366,20 @@
               players: playersArray
             };
           })
-          .sort((a, b) => a.timestamp - b.timestamp)
-          .map((log, index) => {
-            // Count actual games (non-scrimmages) for game numbering
-            const gamesBeforeThis = gameLogs.slice(0, gameLogs.indexOf(log)).filter(g => !g.scrimmage).length;
-            const scrimmagesBeforeThis = gameLogs.slice(0, gameLogs.indexOf(log)).filter(g => g.scrimmage).length;
-            
-            return {
-              ...log,
-              gameNumber: log.scrimmage ? scrimmagesBeforeThis + 1 : gamesBeforeThis + 1
-            };
-          });
+          .sort((a, b) => a.timestamp - b.timestamp);
+
+        // Number games and scrimmages separately
+        let gameCount = 0;
+        let scrimmageCount = 0;
+        gameLogs = gameLogs.map(log => {
+          if (log.scrimmage) {
+            scrimmageCount++;
+            return { ...log, gameNumber: scrimmageCount };
+          } else {
+            gameCount++;
+            return { ...log, gameNumber: gameCount };
+          }
+        });
 
         updateGameSelector();
       } catch (error) {
