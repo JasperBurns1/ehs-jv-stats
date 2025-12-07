@@ -362,14 +362,21 @@
               timestamp: data.timestamp,
               date: data.date,
               record: data.record,
+              scrimmage: data.scrimmage === true || data.scrimmage === 1,
               players: playersArray
             };
           })
           .sort((a, b) => a.timestamp - b.timestamp)
-          .map((log, index) => ({
-            ...log,
-            gameNumber: index + 1
-          }));
+          .map((log, index) => {
+            // Count actual games (non-scrimmages) for game numbering
+            const gamesBeforeThis = gameLogs.slice(0, gameLogs.indexOf(log)).filter(g => !g.scrimmage).length;
+            const scrimmagesBeforeThis = gameLogs.slice(0, gameLogs.indexOf(log)).filter(g => g.scrimmage).length;
+            
+            return {
+              ...log,
+              gameNumber: log.scrimmage ? scrimmagesBeforeThis + 1 : gamesBeforeThis + 1
+            };
+          });
 
         updateGameSelector();
       } catch (error) {
@@ -387,7 +394,8 @@
         const date = new Date(game.timestamp);
         const option = document.createElement('option');
         option.value = game.id;
-        option.textContent = `Game ${game.gameNumber} - ${date.toLocaleDateString()} (${game.record})`;
+        const gameType = game.scrimmage ? 'Scrimmage' : 'Game';
+        option.textContent = `${gameType} ${game.gameNumber} - ${date.toLocaleDateString()} (${game.record})`;
         select.appendChild(option);
       });
     }
