@@ -252,6 +252,7 @@
     <div class="controls">
       <div class="btn-group">
         <button class="btn active" data-view="season">Season</button>
+        <button class="btn" data-view="scrimmages">Scrimmages</button>
         <button class="btn" data-view="game">Game Log</button>
       </div>
       <div class="btn-group" id="seasonViewGroup">
@@ -294,6 +295,7 @@
     let originalOrder = [];
     let gameLogs = [];
     let selectedGameId = null;
+    let scrimmageStats = null;
 
     const COLUMN_ORDER = {
       standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
@@ -382,6 +384,7 @@
         });
 
         updateGameSelector();
+        calculateScrimmageStats();
       } catch (error) {
         console.error('Failed to load game logs:', error);
         gameLogs = [];
@@ -401,6 +404,104 @@
         option.textContent = `${gameType} ${game.gameNumber} - ${date.toLocaleDateString()} (${game.record})`;
         select.appendChild(option);
       });
+    }
+
+    function calculateScrimmageStats() {
+      const scrimmages = gameLogs.filter(g => g.scrimmage);
+      if (scrimmages.length === 0) {
+        scrimmageStats = null;
+        return;
+      }
+
+      const playerTotals = {};
+
+      scrimmages.forEach(scrimmage => {
+        scrimmage.players.forEach(player => {
+          const name = player.Player;
+          if (!playerTotals[name]) {
+            playerTotals[name] = {
+              Player: name,
+              GP: 0,
+              PTS: 0,
+              REB: 0,
+              AST: 0,
+              STL: 0,
+              BLK: 0,
+              PF: 0,
+              TO: 0,
+              FGMade: 0,
+              FGAtt: 0,
+              '3PTMade': 0,
+              '3PTAtt': 0,
+              FTMade: 0,
+              FTAtt: 0
+            };
+          }
+
+          const parseShooting = (str) => {
+            if (!str || typeof str !== 'string') return { made: 0, att: 0 };
+            if (str.includes('-')) {
+              const [m, a] = str.split('-').map(x => parseInt(x) || 0);
+              return { made: m, att: a };
+            }
+            return { made: 0, att: 0 };
+          };
+
+          const fg = parseShooting(player.FG);
+          const threeP = parseShooting(player['3PT']);
+          const ft = parseShooting(player.FT);
+
+          playerTotals[name].GP += 1;
+          playerTotals[name].PTS += parseInt(player.PTS) || 0;
+          playerTotals[name].REB += parseInt(player.REB) || 0;
+          playerTotals[name].AST += parseInt(player.AST) || 0;
+          playerTotals[name].STL += parseInt(player.STL) || 0;
+          playerTotals[name].BLK += parseInt(player.BLK) || 0;
+          playerTotals[name].PF += parseInt(player.PF) || 0;
+          playerTotals[name].TO += parseInt(player.TO) || 0;
+          playerTotals[name].FGMade += fg.made;
+          playerTotals[name].FGAtt += fg.att;
+          playerTotals[name]['3PTMade'] += threeP.made;
+          playerTotals[name]['3PTAtt'] += threeP.att;
+          playerTotals[name].FTMade += ft.made;
+          playerTotals[name].FTAtt += ft.att;
+        });
+      });
+
+      const averages = Object.values(playerTotals).map(p => ({
+        Player: p.Player,
+        GP: p.GP,
+        PTS: (p.PTS / p.GP).toFixed(1),
+        REB: (p.REB / p.GP).toFixed(1),
+        AST: (p.AST / p.GP).toFixed(1),
+        STL: (p.STL / p.GP).toFixed(1),
+        BLK: (p.BLK / p.GP).toFixed(1),
+        PF: (p.PF / p.GP).toFixed(1),
+        TO: (p.TO / p.GP).toFixed(1),
+        'FG%': p.FGAtt > 0 ? ((p.FGMade / p.FGAtt) * 100).toFixed(1) + '%' : '0%',
+        '3PT%': p['3PTAtt'] > 0 ? ((p['3PTMade'] / p['3PTAtt']) * 100).toFixed(1) + '%' : '0%',
+        'FT%': p.FTAtt > 0 ? ((p.FTMade / p.FTAtt) * 100).toFixed(1) + '%' : '0%'
+      }));
+
+      const totals = Object.values(playerTotals).map(p => ({
+        Player: p.Player,
+        GP: p.GP,
+        PTS: p.PTS,
+        REB: p.REB,
+        AST: p.AST,
+        STL: p.STL,
+        BLK: p.BLK,
+        PF: p.PF,
+        TO: p.TO,
+        FG: `${p.FGMade}-${p.FGAtt}`,
+        '3PT': `${p['3PTMade']}-${p['3PTAtt']}`,
+        FT: `${p.FTMade}-${p.FTAtt}`
+      }));
+
+      scrimmageStats = {
+        averages,
+        totals
+      };
     }
 
     function updateHeader(data) {
@@ -510,6 +611,56 @@
       if (!currentData && currentView === 'season') {
         loading.style.display = 'block';
         table.style.display = 'none';
+        return;
+      }
+
+      // Scrimmages view
+      if (currentView === 'scrimmages') {
+        if (!scrimmageStats) {
+          loading.innerHTML = '<div class="no-stats"><h2>No scrimmage stats</h2><p>Mark games as scrimmages in Firebase to see stats here</p></div>';
+          loading.style.display = 'block';
+          table.style.display = 'none';
+          return;
+        }
+
+        let stats;
+        let selectedColumnOrder;
+
+        if (currentSubView === 'averages') {
+          stats = scrimmageStats.averages;
+          selectedColumnOrder = COLUMN_ORDER.standardAverages;
+        } else {
+          stats = scrimmageStats.totals;
+          selectedColumnOrder = COLUMN_ORDER.standardTotals;
+        }
+
+        stats = sortByJerseyNumber(stats);
+        originalOrder = [...stats];
+        
+        sortState = {};
+        selectedColumnOrder.forEach(col => sortState[col] = 'none');
+
+        const thead = document.getElementById('tableHeader');
+        thead.innerHTML = `<tr>${selectedColumnOrder.map(col => `<th data-column="${col}">${col}</th>`).join('')}</tr>`;
+
+        thead.querySelectorAll('th').forEach(th => {
+          th.addEventListener('click', () => {
+            const columnName = th.dataset.column;
+            const result = sortByColumn(stats, columnName, sortState[columnName]);
+            stats = result.data;
+            sortState[columnName] = result.state;
+            
+            thead.querySelectorAll('th').forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+            if (result.state === 'asc') th.classList.add('sorted-asc');
+            else if (result.state === 'desc') th.classList.add('sorted-desc');
+            
+            renderTableBody(stats, selectedColumnOrder);
+          });
+        });
+
+        renderTableBody(stats, selectedColumnOrder);
+        loading.style.display = 'none';
+        table.style.display = 'table';
         return;
       }
 
@@ -644,6 +795,16 @@
             seasonViewGroup.style.display = 'none';
             statsTypeGroup.style.display = 'none';
             gameSelector.style.display = 'flex';
+          } else if (view === 'scrimmages') {
+            seasonViewGroup.style.display = 'flex';
+            statsTypeGroup.style.display = 'none';
+            gameSelector.style.display = 'none';
+            // Force standard stats for scrimmages (no advanced stats)
+            if (currentStats === 'advanced') {
+              currentStats = 'standard';
+              document.querySelectorAll('[data-stats]')[0].classList.add('active');
+              document.querySelectorAll('[data-stats]')[1].classList.remove('active');
+            }
           } else {
             seasonViewGroup.style.display = 'flex';
             statsTypeGroup.style.display = 'flex';
