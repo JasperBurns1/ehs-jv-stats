@@ -299,11 +299,9 @@
     let regularSeasonStats = null;
 
     const COLUMN_ORDER = {
-      standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
+      standardAverages: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
       standardTotals: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG', '3PT', 'FT', 'TO'],
-      scrimmageAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
-      scrimmageTotals: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG', '3PT', 'FT', 'TO'],
-      gameLog: ['Player', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG', '3PT', 'FT', 'TO'],
+      gameLog: ['Player', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG', '3PT', 'FT', 'TO'],
       advanced: ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO']
     };
 
@@ -368,6 +366,7 @@
               date: data.date,
               record: data.record,
               scrimmage: data.scrimmage === true || data.scrimmage === 1,
+              starter: data.starter || null,
               players: playersArray
             };
           })
@@ -426,6 +425,7 @@
             playerTotals[name] = {
               Player: name,
               GP: 0,
+              GS: 0,
               PTS: 0,
               REB: 0,
               AST: 0,
@@ -456,6 +456,12 @@
           const ft = parseShooting(player.FT);
 
           playerTotals[name].GP += 1;
+          
+          // Check if player started this game
+          if (player.GS === 1 || player.GS === '1' || (scrimmage.starter && scrimmage.starter.includes(name))) {
+            playerTotals[name].GS += 1;
+          }
+          
           playerTotals[name].PTS += parseInt(player.PTS) || 0;
           playerTotals[name].REB += parseInt(player.REB) || 0;
           playerTotals[name].AST += parseInt(player.AST) || 0;
@@ -490,6 +496,7 @@
         return {
           Player: p.Player,
           GP: p.GP,
+          GS: p.GS,
           PTS: (p.PTS / p.GP).toFixed(1),
           REB: (p.REB / p.GP).toFixed(1),
           AST: (p.AST / p.GP).toFixed(1),
@@ -509,6 +516,7 @@
       const totals = Object.values(playerTotals).map(p => ({
         Player: p.Player,
         GP: p.GP,
+        GS: p.GS,
         PTS: p.PTS,
         REB: p.REB,
         AST: p.AST,
@@ -543,6 +551,7 @@
             playerTotals[name] = {
               Player: name,
               GP: 0,
+              GS: 0,
               PTS: 0,
               REB: 0,
               AST: 0,
@@ -573,6 +582,12 @@
           const ft = parseShooting(player.FT);
 
           playerTotals[name].GP += 1;
+          
+          // Check if player started this game
+          if (player.GS === 1 || player.GS === '1' || (game.starter && game.starter.includes(name))) {
+            playerTotals[name].GS += 1;
+          }
+          
           playerTotals[name].PTS += parseInt(player.PTS) || 0;
           playerTotals[name].REB += parseInt(player.REB) || 0;
           playerTotals[name].AST += parseInt(player.AST) || 0;
@@ -602,6 +617,7 @@
         return {
           Player: p.Player,
           GP: p.GP,
+          GS: p.GS,
           PTS: (p.PTS / p.GP).toFixed(1),
           REB: (p.REB / p.GP).toFixed(1),
           AST: (p.AST / p.GP).toFixed(1),
@@ -621,6 +637,7 @@
       const totals = Object.values(playerTotals).map(p => ({
         Player: p.Player,
         GP: p.GP,
+        GS: p.GS,
         PTS: p.PTS,
         REB: p.REB,
         AST: p.AST,
@@ -763,10 +780,10 @@
 
         if (currentStats === 'standard' && currentSubView === 'averages') {
           stats = scrimmageStats.averages;
-          selectedColumnOrder = COLUMN_ORDER.scrimmageAverages;
+          selectedColumnOrder = COLUMN_ORDER.standardAverages;
         } else if (currentStats === 'standard' && currentSubView === 'totals') {
           stats = scrimmageStats.totals;
-          selectedColumnOrder = COLUMN_ORDER.scrimmageTotals;
+          selectedColumnOrder = COLUMN_ORDER.standardTotals;
         } else if (currentStats === 'advanced') {
           stats = scrimmageStats.averages;
           selectedColumnOrder = COLUMN_ORDER.advanced;
