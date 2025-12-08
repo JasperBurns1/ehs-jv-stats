@@ -537,12 +537,13 @@
       const playerTotals = {};
 
       regularGames.forEach(game => {
-        game.players.forEach(player => {
+        game.players.forEach((player, index) => {
           const name = player.Player;
           if (!playerTotals[name]) {
             playerTotals[name] = {
               Player: name,
               GP: 0,
+              GS: 0,
               PTS: 0,
               REB: 0,
               AST: 0,
@@ -573,6 +574,12 @@
           const ft = parseShooting(player.FT);
 
           playerTotals[name].GP += 1;
+          // Track GS from game log if available, otherwise use index (first 5 players started)
+          if (player.GS !== undefined) {
+            playerTotals[name].GS += parseInt(player.GS) || 0;
+          } else if (index < 5) {
+            playerTotals[name].GS += 1;
+          }
           playerTotals[name].PTS += parseInt(player.PTS) || 0;
           playerTotals[name].REB += parseInt(player.REB) || 0;
           playerTotals[name].AST += parseInt(player.AST) || 0;
@@ -621,6 +628,7 @@
       const totals = Object.values(playerTotals).map(p => ({
         Player: p.Player,
         GP: p.GP,
+        GS: p.GS,
         PTS: p.PTS,
         REB: p.REB,
         AST: p.AST,
@@ -848,30 +856,35 @@
         return;
       }
 
-      let dataKey = '';
-      let selectedColumnOrder = [];
-      
-      if (currentStats === 'standard' && currentSubView === 'averages') {
-        dataKey = 'standardAverages';
-        selectedColumnOrder = COLUMN_ORDER.standardAverages;
-      } else if (currentStats === 'standard' && currentSubView === 'totals') {
-        dataKey = 'standardTotals';
-        selectedColumnOrder = COLUMN_ORDER.standardTotals;
-      } else if (currentStats === 'advanced') {
-        dataKey = 'advancedAverages';
-        selectedColumnOrder = COLUMN_ORDER.advanced;
-      }
-
-      let stats = currentData[dataKey] || [];
-
-      if (stats.length === 0) {
-        loading.innerHTML = '<div class="no-stats"><h2>No stats available yet</h2><p>Stats will appear here once uploaded from GameChanger</p></div>';
+      // Use regularSeasonStats calculated from game logs (excludes scrimmages)
+      if (!regularSeasonStats) {
+        loading.innerHTML = '<div class="no-stats"><h2>No regular season stats</h2><p>Stats will appear here once games are logged</p></div>';
         loading.style.display = 'block';
         table.style.display = 'none';
         return;
       }
 
-      stats = reorderColumns(stats, selectedColumnOrder);
+      let stats;
+      let selectedColumnOrder = [];
+      
+      if (currentStats === 'standard' && currentSubView === 'averages') {
+        stats = regularSeasonStats.averages;
+        selectedColumnOrder = COLUMN_ORDER.standardAverages;
+      } else if (currentStats === 'standard' && currentSubView === 'totals') {
+        stats = regularSeasonStats.totals;
+        selectedColumnOrder = COLUMN_ORDER.standardTotals;
+      } else if (currentStats === 'advanced') {
+        stats = regularSeasonStats.averages;
+        selectedColumnOrder = COLUMN_ORDER.advanced;
+      }
+
+      if (!stats || stats.length === 0) {
+        loading.innerHTML = '<div class="no-stats"><h2>No stats available yet</h2><p>Stats will appear here once games are logged</p></div>';
+        loading.style.display = 'block';
+        table.style.display = 'none';
+        return;
+      }
+
       stats = sortByJerseyNumber(stats);
       originalOrder = [...stats];
       
