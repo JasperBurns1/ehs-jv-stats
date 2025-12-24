@@ -392,7 +392,7 @@
     }
 
     .player-modal {
-      background: white;
+      background: #0f172a;
       border-radius: 16px;
       max-width: 900px;
       width: 100%;
@@ -417,7 +417,6 @@
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       color: white;
       padding: 30px;
-      border-radius: 16px 16px 0 0;
       position: relative;
     }
 
@@ -455,8 +454,29 @@
       font-size: 0.9em;
     }
 
+    .awards-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(226, 183, 74, 0.2);
+      border: 2px solid #e2b74a;
+      color: #e2b74a;
+      padding: 8px 16px;
+      border-radius: 20px;
+      margin-top: 10px;
+      font-weight: 700;
+      font-size: 0.85em;
+      letter-spacing: 0.5px;
+    }
+
+    .trophy-icon {
+      font-size: 1.2em;
+    }
+
     .modal-content {
       padding: 30px;
+      background: white;
+      border-radius: 0 0 16px 16px;
     }
 
     .modal-controls {
@@ -732,6 +752,7 @@
     let modalView = 'averages';
     let modalStats = 'standard';
     let currentPlayerName = null;
+    let gptAwards = {};
 
     const COLUMN_ORDER = {
       standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
@@ -767,6 +788,7 @@
         currentData = data;
         
         await loadGameLogs();
+        await loadGPTAwards();
         updateHeader(data);
         renderTable();
       } catch (error) {
@@ -777,6 +799,22 @@
             <p>Please make sure stats have been uploaded at least once.</p>
           </div>
         `;
+      }
+    }
+
+    async function loadGPTAwards() {
+      try {
+        const response = await fetch(`${FIREBASE_URL}/teams/${TEAM_ID}/gptAwards.json`);
+        if (!response.ok) {
+          gptAwards = {};
+          return;
+        }
+        
+        const awards = await response.json();
+        gptAwards = awards || {};
+      } catch (error) {
+        console.error('Failed to load GPT awards:', error);
+        gptAwards = {};
       }
     }
 
@@ -1255,8 +1293,16 @@
         g.players.some(p => p.Player === currentPlayerName) && !g.scrimmage
       );
       
-      document.getElementById('modalPlayerSubtitle').textContent = 
-        `${playerGames.length} Games Played`;
+      // Count GPT awards for this player
+      const awardCount = gptAwards[currentPlayerName] || 0;
+      
+      let subtitleHTML = `${playerGames.length} Games Played`;
+      if (awardCount > 0) {
+        const awardText = awardCount === 1 ? '1x GPT Award' : `${awardCount}x GPT Award`;
+        subtitleHTML += `<div class="awards-badge"><span class="trophy-icon">🏆</span> ${awardText}</div>`;
+      }
+      
+      document.getElementById('modalPlayerSubtitle').innerHTML = subtitleHTML;
 
       renderModalStats();
       renderModalGameLog();
@@ -1353,10 +1399,16 @@
           year: 'numeric'
         });
 
+        // Check if this player won best teammate for this game
+        const wonBestTeammate = bestTeammateAwards[game.id] === currentPlayerName;
+
         return `
           <div class="game-log-item">
             <div class="game-log-header">
-              <span class="game-date">Game ${game.gameNumber} - ${formattedDate}</span>
+              <span class="game-date">
+                Game ${game.gameNumber} - ${formattedDate}
+                ${wonBestTeammate ? ' <span style="color: #e2b74a;">🏆</span>' : ''}
+              </span>
               <span class="game-record">${game.record || '0-0'}</span>
             </div>
             <div class="game-stats-row">
