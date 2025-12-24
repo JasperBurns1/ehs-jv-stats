@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EHS JV BBall Stats</title>
+  <title>EHS JV Basketball Stats</title>
   <style>
     * {
       margin: 0;
@@ -84,6 +84,8 @@
       margin-bottom: 30px;
       flex-wrap: wrap;
       animation: fadeIn 0.6s ease 0.2s both;
+      position: relative;
+      z-index: 2000;
     }
 
     .btn-group {
@@ -197,6 +199,7 @@
       overflow: hidden;
       opacity: 0;
       visibility: hidden;
+      pointer-events: none;
       transform: translateY(-10px);
       transition: all 0.3s;
       max-height: 300px;
@@ -205,10 +208,12 @@
       z-index: 9999;
     }
 
-    .custom-select.open .select-options {
+    .custom-select.open .select-options,
+    .select-options.is-open {
       opacity: 1;
       visibility: visible;
       transform: translateY(0);
+      pointer-events: auto;
     }
 
     .option {
@@ -1410,6 +1415,7 @@
     let originalOrder = [];
     let gameLogs = [];
     let selectedGameId = null;
+    let closeGameSelect = () => {};
     let scrimmageStats = null;
     let regularSeasonStats = null;
     let gptAwards = {};
@@ -1427,7 +1433,7 @@
       gameLog: ['Player', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'TO', 'FG', '3PT', 'FT', 'GmSc']
     };
 
-    const LEADER_CATEGORIES = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG%', '3PT%', 'FT%'];
+    const LEADER_CATEGORIES = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG%', '3PT%', 'FT%', 'eFG%', 'TS%', 'AST/TO', 'TO'];
 
     // GameScore Formula (adapted from NBA's formula for high school)
     // GmSc = PTS + 0.4*FGM - 0.7*FGA - 0.4*(FTA-FTM) + 0.7*ORB + 0.3*DRB + STL + 0.7*AST + 0.7*BLK - 0.4*PF - TO
@@ -1712,26 +1718,63 @@
       const stats = regularSeasonStats.averages;
       let html = '';
 
+      const lowerIsBetter = new Set(['TO']);
+
+      const parseLeaderValue = (raw, cat) => {
+        const str = String(raw ?? '').trim();
+        if (!str) return null;
+
+        if (cat === 'AST/TO') {
+          if (str === '∞' || str.toLowerCase() === 'inf' || str.toLowerCase() === 'infinity') return Infinity;
+          const n = parseFloat(str);
+          return Number.isFinite(n) ? n : null;
+        }
+
+        const n = parseFloat(str.replace('%', ''));
+        return Number.isFinite(n) ? n : null;
+      };
+
       LEADER_CATEGORIES.forEach(cat => {
+        const isLowerBetter = lowerIsBetter.has(cat);
         let leader = null;
-        let leaderValue = -Infinity;
+        let leaderValue = isLowerBetter ? Infinity : -Infinity;
 
         stats.forEach(player => {
-          let val = parseFloat(String(player[cat]).replace('%', ''));
-          if (!isNaN(val) && val > leaderValue) {
-            leaderValue = val;
-            leader = player;
+          const val = parseLeaderValue(player[cat], cat);
+          if (val === null) return;
+
+          if (isLowerBetter) {
+            if (val < leaderValue) {
+              leaderValue = val;
+              leader = player;
+            }
+          } else {
+            if (val > leaderValue) {
+              leaderValue = val;
+              leader = player;
+            }
           }
         });
 
         if (leader) {
-          const displayValue = cat.includes('%') ? `${leaderValue.toFixed(1)}%` : leaderValue.toFixed(1);
+          let displayValue = '';
+          if (cat === 'AST/TO') {
+            displayValue = leaderValue === Infinity ? '∞' : leaderValue.toFixed(2);
+          } else if (cat.includes('%')) {
+            displayValue = `${leaderValue.toFixed(1)}%`;
+          } else {
+            displayValue = leaderValue.toFixed(1);
+          }
+
           const catLabel = cat === 'PTS' ? 'Points' : 
                           cat === 'REB' ? 'Rebounds' : 
                           cat === 'AST' ? 'Assists' : 
                           cat === 'STL' ? 'Steals' : 
-                          cat === 'BLK' ? 'Blocks' : cat;
-          
+                          cat === 'BLK' ? 'Blocks' :
+                          cat === 'TO' ? 'Least Turnovers' :
+                          cat === 'AST/TO' ? 'AST/TO Ratio' :
+                          cat;
+
           html += `
             <div class="leader-card">
               <div class="leader-crown">👑</div>
@@ -1749,24 +1792,35 @@
     function getStatLeaders(stats, columns) {
       const leaders = {};
       // Stats where LOWER is better (crowns go to lowest values)
-      const lowerIsBetter = ['TO', 'PF'];
-      
+      const lowerIsBetter = ['TO'];
+      // Stats we do NOT crown (requested: no lowest fouls)
+      const excluded = ['PF'];
+
       columns.forEach(col => {
         if (col === 'Player' || col === 'GP' || col === 'GS') return;
-        
+        if (excluded.includes(col)) return;
+
         const isLowerBetter = lowerIsBetter.includes(col);
         let bestVal = isLowerBetter ? Infinity : -Infinity;
         let leaderPlayer = null;
-        
+
         stats.forEach(player => {
           let val;
-          if (col === 'FG' || col === '3PT' || col === 'FT') {
+          if (col === 'AST/TO') {
+            const s = String(player[col] ?? '').trim();
+            if (s === '∞' || s.toLowerCase() === 'inf' || s.toLowerCase() === 'infinity') val = Infinity;
+            else {
+              const n = parseFloat(s);
+              val = Number.isFinite(n) ? n : NaN;
+            }
+          } else if (col === 'FG' || col === '3PT' || col === 'FT') {
             const match = String(player[col]).match(/^(\d+)/);
             val = match ? parseInt(match[1]) : 0;
           } else {
-            val = parseFloat(String(player[col]).replace('%', ''));
+            const n = parseFloat(String(player[col]).replace('%', ''));
+            val = Number.isFinite(n) ? n : NaN;
           }
-          
+
           if (!isNaN(val)) {
             if (isLowerBetter) {
               if (val < bestVal) {
@@ -1781,27 +1835,92 @@
             }
           }
         });
-        
+
         if (leaderPlayer) {
           leaders[col] = leaderPlayer;
         }
       });
-      
+
       return leaders;
     }
 
     function setupCustomSelect() {
       const customSelect = document.getElementById('customGameSelect');
       const trigger = customSelect.querySelector('.select-trigger');
-      
-      trigger.addEventListener('click', () => {
-        customSelect.classList.toggle('open');
+      const options = document.getElementById('selectOptions');
+      const originalParent = options.parentElement;
+
+      let isOpen = false;
+
+      const positionOptions = () => {
+        const rect = trigger.getBoundingClientRect();
+        options.style.position = 'fixed';
+        options.style.top = `${Math.round(rect.bottom + 8)}px`;
+        options.style.left = `${Math.round(rect.left)}px`;
+        options.style.width = `${Math.round(rect.width)}px`;
+        options.style.zIndex = '2147483647';
+      };
+
+      const open = () => {
+        if (isOpen) return;
+        isOpen = true;
+
+        customSelect.classList.add('open');
+        options.classList.add('is-open');
+
+        // Move menu to <body> to escape any stacking/overflow issues
+        if (options.parentElement !== document.body) {
+          document.body.appendChild(options);
+        }
+
+        positionOptions();
+      };
+
+      const close = () => {
+        if (!isOpen) {
+          customSelect.classList.remove('open');
+          options.classList.remove('is-open');
+          return;
+        }
+        isOpen = false;
+
+        customSelect.classList.remove('open');
+        options.classList.remove('is-open');
+
+        // Reset any inline positioning and return to original DOM position
+        options.style.position = '';
+        options.style.top = '';
+        options.style.left = '';
+        options.style.width = '';
+        options.style.zIndex = '';
+
+        if (originalParent && options.parentElement === document.body) {
+          originalParent.appendChild(options);
+        }
+      };
+
+      // Expose close so selectGame() can reliably close the menu
+      closeGameSelect = close;
+
+      trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isOpen) close();
+        else open();
+      });
+
+      // Keep it positioned correctly on scroll/resize
+      window.addEventListener('scroll', () => {
+        if (isOpen) positionOptions();
+      }, true);
+      window.addEventListener('resize', () => {
+        if (isOpen) positionOptions();
       });
 
       document.addEventListener('click', (e) => {
-        if (!customSelect.contains(e.target)) {
-          customSelect.classList.remove('open');
-        }
+        if (!isOpen) return;
+        if (trigger.contains(e.target) || options.contains(e.target)) return;
+        close();
       });
     }
 
@@ -1945,7 +2064,7 @@
     function selectGame(id, label) {
       selectedGameId = id;
       document.getElementById('selectText').textContent = label;
-      document.getElementById('customGameSelect').classList.remove('open');
+      closeGameSelect();
       
       document.querySelectorAll('.option').forEach(opt => {
         if (opt.textContent === label) opt.classList.add('selected');
