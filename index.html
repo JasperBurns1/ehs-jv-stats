@@ -692,7 +692,7 @@
       bottom: 0;
       background: rgba(5, 11, 24, 0.8);
       backdrop-filter: blur(4px);
-      z-index: 3000;
+      z-index: 5000;
       overflow-y: auto;
       padding: 20px;
     }
@@ -1259,7 +1259,7 @@
           <span>⚠️</span> Important Disclaimer
         </div>
         <div style="color: #fca5a5; font-size: 0.95em; line-height: 1.6;">
-          These statistics are <strong style="color: #f8fafc;">purely numerical</strong> and do not fully capture every player's skills, talent, basketball IQ, leadership, defense, overall contribution to the team, as well as other factors. Stats don't show many features of a player. This is not a personal or biased ranking, it's just the stats from an old guy being put to use
+          These statistics are <strong style="color: #f8fafc;">purely numerical</strong> and do not fully capture every player's skills, talent, basketball IQ, leadership, defense, or overall contribution to the team. Numbers only tell part of the story.
         </div>
       </div>
     </div>
@@ -1420,7 +1420,7 @@
       gameLog: ['Player', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'TO', 'FG', '3PT', 'FT', 'GmSc']
     };
 
-    const LEADER_CATEGORIES = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG', '3PT', 'eFG%', 'TS%', 'AST/TO', 'TO'];
+    const LEADER_CATEGORIES = ['PTS', 'REB', 'AST', 'STL', 'BLK', 'FG%', '3PT%', 'FT%', 'eFG%', 'TS%', 'AST/TO', 'TO'];
 
     // GameScore Formula (adapted from NBA's formula for high school)
     // GmSc = PTS + 0.4*FGM - 0.7*FGA - 0.4*(FTA-FTM) + 0.7*ORB + 0.3*DRB + STL + 0.7*AST + 0.7*BLK - 0.4*PF - TO
@@ -1752,18 +1752,15 @@
     }
 
     function renderLeadersSection() {
-      if (!regularSeasonStats || !regularSeasonStats.totals || !regularSeasonStats.averages) {
+      if (!regularSeasonStats || !regularSeasonStats.averages) {
         document.getElementById('leadersGrid').innerHTML = '<p style="color: #64748b; text-align: center; padding: 40px;">No stats available yet.</p>';
         return;
       }
 
-      const totalsStats = regularSeasonStats.totals;
-      const avgStats = regularSeasonStats.averages;
+      const stats = regularSeasonStats.averages;
       let html = '';
 
       const lowerIsBetter = new Set(['TO']);
-      // These use averages instead of totals
-      const useAverages = new Set(['eFG%', 'TS%', 'AST/TO']);
 
       const parseLeaderValue = (raw, cat) => {
         const str = String(raw ?? '').trim();
@@ -1775,18 +1772,11 @@
           return Number.isFinite(n) ? n : null;
         }
 
-        // For FG and 3PT in totals, parse the "made-attempts" format
-        if (cat === 'FG' || cat === '3PT') {
-          const match = str.match(/^(\d+)/);
-          return match ? parseInt(match[1]) : null;
-        }
-
         const n = parseFloat(str.replace('%', ''));
         return Number.isFinite(n) ? n : null;
       };
 
       LEADER_CATEGORIES.forEach(cat => {
-        const stats = useAverages.has(cat) ? avgStats : totalsStats;
         const isLowerBetter = lowerIsBetter.has(cat);
         let leader = null;
         let leaderValue = isLowerBetter ? Infinity : -Infinity;
@@ -1809,26 +1799,22 @@
         });
 
         if (leader) {
-          let displayValue;
+          let displayValue = '';
           if (cat === 'AST/TO') {
             displayValue = leaderValue === Infinity ? '∞' : leaderValue.toFixed(2);
           } else if (cat.includes('%')) {
             displayValue = `${leaderValue.toFixed(1)}%`;
           } else {
-            displayValue = Math.round(leaderValue).toString();
+            displayValue = leaderValue.toFixed(1);
           }
 
-          const catLabel = cat === 'PTS' ? 'Total Points' : 
-                          cat === 'REB' ? 'Total Rebounds' : 
-                          cat === 'AST' ? 'Total Assists' : 
-                          cat === 'STL' ? 'Total Steals' : 
-                          cat === 'BLK' ? 'Total Blocks' :
-                          cat === 'FG' ? 'Field Goals Made' :
-                          cat === '3PT' ? '3-Pointers Made' :
-                          cat === 'TO' ? 'Fewest Turnovers' :
+          const catLabel = cat === 'PTS' ? 'Points' : 
+                          cat === 'REB' ? 'Rebounds' : 
+                          cat === 'AST' ? 'Assists' : 
+                          cat === 'STL' ? 'Steals' : 
+                          cat === 'BLK' ? 'Blocks' :
+                          cat === 'TO' ? 'Least Turnovers' :
                           cat === 'AST/TO' ? 'AST/TO Ratio' :
-                          cat === 'eFG%' ? 'Effective FG%' :
-                          cat === 'TS%' ? 'True Shooting%' :
                           cat;
 
           html += `
@@ -1984,6 +1970,7 @@
       setupCustomSelect();
       await Promise.all([fetchStats(), loadGameLogs(), loadGPTAwards()]);
       calculateWeeklyPerformances();
+      renderTable(); // Re-render after all data is loaded
     }
 
     async function fetchStats() {
@@ -2256,9 +2243,7 @@
       if (data.lastUpdated) {
         const date = new Date(data.lastUpdated);
         document.getElementById('lastUpdated').innerHTML =
-  `Last updated: ${date.toLocaleString()}<br>This website and statistics will NOT be used to harass, bully, or shame anyone. It is only for distributing stats and making a fun competition out of the season`;
-
-        
+  `Last updated: ${date.toLocaleString()}<br>This website and statistics will NOT be used to harass, bully, or shame anyone. It is only for distributing stats and making a fun competition out of the season<br><br><span style="color: #fca5a5; font-size: 0.9em;">⚠️ <strong>Disclaimer:</strong> These statistics are purely numerical and do not fully capture every player's skills, talent, overall contribution to the team, or other factors. Numbers only tell part of the story, so you shouldn't feel bad about these stats (even if someone's stats look bad, they are not a bad player).</span>`;
       }
     }
 
@@ -2514,6 +2499,20 @@
       currentPlayerName = playerName;
       modalView = 'averages';
       modalStats = 'standard';
+      
+      // Reset modal button UI to match the reset state
+      document.querySelectorAll('[data-modal-view]').forEach(b => {
+        b.classList.toggle('active', b.dataset.modalView === 'averages');
+      });
+      document.querySelectorAll('[data-modal-stats]').forEach(b => {
+        b.classList.toggle('active', b.dataset.modalStats === 'standard');
+      });
+      
+      // Reset advanced button visibility (it may have been hidden when totals was selected)
+      const advancedBtn = document.querySelector('[data-modal-stats="advanced"]');
+      if (advancedBtn) {
+        advancedBtn.style.display = 'block';
+      }
       
       const modal = document.getElementById('playerModal');
       modal.classList.add('active');
