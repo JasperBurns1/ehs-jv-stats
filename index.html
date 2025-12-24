@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EHS JV BBall Stats</title>
   <style>
-    /* THEME UPDATE: Midnight Navy & Champagne Gold 
-       Original Logic and Structure Preserved
-    */
     * {
       margin: 0;
       padding: 0;
@@ -100,7 +97,6 @@
       color: #050b18;
     }
 
-    /* --- Custom Game Selector Styling --- */
     .game-selector-wrapper {
       background: #0f172a;
       border-radius: 12px;
@@ -156,7 +152,7 @@
       transition: all 0.3s;
       max-height: 300px;
       overflow-y: auto;
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     .custom-select.open .select-options {
@@ -201,7 +197,6 @@
       transform: rotate(-135deg);
     }
 
-    /* --- Stats Container --- */
     .stats-container {
       background: white;
       border-radius: 16px;
@@ -209,6 +204,21 @@
       box-shadow: 0 10px 40px rgba(0,0,0,0.4);
       overflow-x: auto;
       min-height: 400px;
+      position: relative;
+    }
+
+    /* NEW: Sticky header container */
+    .table-wrapper {
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      background: #f8f9fa;
+      z-index: 100;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
 
     table {
@@ -216,11 +226,9 @@
       border-collapse: collapse;
     }
 
+    /* NEW: Grid styling */
     thead {
       background: #f8f9fa;
-      position: sticky;
-      top: 0;
-      z-index: 10;
     }
 
     th {
@@ -229,6 +237,7 @@
       font-weight: 700;
       color: #050b18;
       border-bottom: 2px solid #e2b74a;
+      border-right: 1px solid #e2e8f0;
       font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -236,6 +245,10 @@
       cursor: pointer;
       user-select: none;
       transition: background 0.2s;
+    }
+
+    th:last-child {
+      border-right: none;
     }
 
     th:hover {
@@ -254,8 +267,13 @@
 
     td {
       padding: 12px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid #e2e8f0;
+      border-right: 1px solid #e2e8f0;
       font-size: 14px;
+    }
+
+    td:last-child {
+      border-right: none;
     }
 
     tr:hover {
@@ -265,6 +283,13 @@
     .player-name {
       font-weight: 600;
       color: #050b18;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .player-name:hover {
+      color: #e2b74a;
+      text-decoration: underline;
     }
 
     .loading {
@@ -296,7 +321,6 @@
       margin: 20px 0;
     }
 
-    /* --- Score Section Styling --- */
     .game-score-display {
       margin-top: 30px;
       padding-top: 20px;
@@ -346,6 +370,237 @@
       color: #ef4444;
     }
 
+    /* NEW: Player Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(5, 11, 24, 0.8);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .player-modal {
+      background: white;
+      border-radius: 16px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      animation: modalSlideIn 0.3s ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .modal-header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 16px 16px 0 0;
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      color: white;
+      font-size: 24px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+
+    .modal-close:hover {
+      background: rgba(226, 183, 74, 0.3);
+      transform: rotate(90deg);
+    }
+
+    .modal-player-name {
+      font-size: 2em;
+      margin-bottom: 5px;
+      color: #e2b74a;
+    }
+
+    .modal-player-subtitle {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.9em;
+    }
+
+    .modal-content {
+      padding: 30px;
+    }
+
+    .modal-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .modal-btn-group {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 4px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .modal-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+
+    .modal-btn:hover {
+      background: rgba(226, 183, 74, 0.1);
+    }
+
+    .modal-btn.active {
+      background: #e2b74a;
+      color: white;
+    }
+
+    .stats-section {
+      margin-bottom: 30px;
+    }
+
+    .section-title {
+      font-size: 1.3em;
+      color: #0f172a;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2b74a;
+      font-weight: 700;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+
+    .stat-label {
+      font-size: 0.75em;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 1.8em;
+      color: #0f172a;
+      font-weight: 900;
+    }
+
+    .game-log-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .game-log-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .game-log-item:hover {
+      border-color: #e2b74a;
+      box-shadow: 0 2px 8px rgba(226, 183, 74, 0.2);
+    }
+
+    .game-log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .game-date {
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .game-record {
+      font-size: 0.85em;
+      color: #64748b;
+      background: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+
+    .game-stats-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .game-stat-mini {
+      font-size: 0.9em;
+      color: #475569;
+    }
+
+    .game-stat-mini strong {
+      color: #0f172a;
+      margin-right: 4px;
+    }
+
+    .no-games {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(10px); }
       to { opacity: 1; transform: translateY(0); }
@@ -356,6 +611,20 @@
       .stats-container { padding: 15px; }
       th, td { padding: 10px 8px; font-size: 12px; }
       .custom-select { width: 250px; }
+      .player-modal {
+        margin: 10px;
+        max-height: 95vh;
+      }
+      .modal-header {
+        padding: 20px;
+      }
+      .modal-content {
+        padding: 20px;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+      }
     }
   </style>
 </head>
@@ -390,8 +659,7 @@
             <span id="selectText">Select a game...</span>
             <div class="arrow"></div>
           </div>
-          <div class="select-options" id="selectOptions">
-            </div>
+          <div class="select-options" id="selectOptions"></div>
         </div>
       </div>
     </div>
@@ -402,12 +670,47 @@
         Loading stats...
       </div>
       
-      <table id="statsTable" style="display: none;">
-        <thead id="tableHeader"></thead>
-        <tbody id="tableBody"></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table id="statsTable" style="display: none;">
+          <thead id="tableHeader" class="sticky-header"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
 
       <div id="scoreContainer" class="game-score-display" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- Player Modal -->
+  <div class="modal-overlay" id="playerModal">
+    <div class="player-modal">
+      <div class="modal-header">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <h2 class="modal-player-name" id="modalPlayerName"></h2>
+        <div class="modal-player-subtitle" id="modalPlayerSubtitle"></div>
+      </div>
+      <div class="modal-content">
+        <div class="modal-controls">
+          <div class="modal-btn-group">
+            <button class="modal-btn active" data-modal-view="averages">Averages</button>
+            <button class="modal-btn" data-modal-view="totals">Totals</button>
+          </div>
+          <div class="modal-btn-group">
+            <button class="modal-btn active" data-modal-stats="standard">Standard</button>
+            <button class="modal-btn" data-modal-stats="advanced">Advanced</button>
+          </div>
+        </div>
+
+        <div class="stats-section">
+          <h3 class="section-title">Season Statistics</h3>
+          <div class="stats-grid" id="modalStatsGrid"></div>
+        </div>
+
+        <div class="stats-section">
+          <h3 class="section-title">Game Log</h3>
+          <div class="game-log-list" id="modalGameLog"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -426,6 +729,10 @@
     let scrimmageStats = null;
     let regularSeasonStats = null;
 
+    let modalView = 'averages';
+    let modalStats = 'standard';
+    let currentPlayerName = null;
+
     const COLUMN_ORDER = {
       standardAverages: ['Player', 'GP', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG%', '3PT%', 'FT%', 'TO'],
       standardTotals: ['Player', 'GP', 'GS', 'PTS', 'REB', 'AST', 'STL', 'BLK', 'PF', 'FG', '3PT', 'FT', 'TO'],
@@ -435,17 +742,6 @@
       advanced: ['Player', 'GP', 'eFG%', 'TS%', 'AST/TO']
     };
 
-    const COLUMN_MAPPING = {
-      'PLAYER': 'Player', 'Player': 'Player', 'GP': 'GP', 'GS': 'GS',
-      'PPG': 'PTS', 'PTS': 'PTS', 'PFPG': 'PF', 'PF': 'PF',
-      'RPG': 'REB', 'REB': 'REB', 'APG': 'AST', 'AST': 'AST',
-      'SPG': 'STL', 'STL': 'STL', 'BPG': 'BLK', 'BLK': 'BLK',
-      'TOPG': 'TO', 'TO': 'TO', 'FGPct': 'FG%', 'FG': 'FG%',
-      '3PTPct': '3PT%', '3PT': '3PT%', 'FTPct': 'FT%', 'FT': 'FT%',
-      'eFGPct': 'eFG%', 'TSPct': 'TS%', 'AST_TO': 'AST/TO'
-    };
-
-    // --- Custom Select Logic ---
     function setupCustomSelect() {
       const wrapper = document.getElementById('customGameSelect');
       const trigger = wrapper.querySelector('.select-trigger');
@@ -519,7 +815,6 @@
           })
           .sort((a, b) => a.timestamp - b.timestamp);
 
-        // Logic preserved from index2.html
         let gameCount = 0;
         let scrimmageCount = 0;
         gameLogs = gameLogs.map(log => {
@@ -558,9 +853,9 @@
       gameLogs.forEach((game) => {
         const dateObj = new Date(game.date);
         const formattedDate = dateObj.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
         });
         const gameType = game.scrimmage ? 'Scrimmage' : 'Game';
         const label = `${gameType} ${game.gameNumber} - ${formattedDate} - (${game.record || '0-0'})`;
@@ -746,7 +1041,7 @@
         let valB = b[columnName];
 
         if (currentView === 'season' && currentSubView === 'totals' && (columnName === 'FG' || columnName === '3PT' || columnName === 'FT')) {
-            const parseShootingStat = (val) => {
+          const parseShootingStat = (val) => {
             if (!val || typeof val !== 'string') return { made: 0, attempts: 0 };
             if (val.includes('-')) {
               const [made, attempts] = val.split('-').map(v => parseInt(v) || 0);
@@ -926,13 +1221,159 @@
           ${columns.map((col, idx) => {
             const value = player[col];
             const className = idx === 0 ? 'player-name' : '';
-            return `<td class="${className}">${value ?? 0}</td>`;
+            const clickHandler = idx === 0 ? `onclick="openPlayerModal('${player.Player}')"` : '';
+            return `<td class="${className}" ${clickHandler}>${value ?? 0}</td>`;
           }).join('')}
         </tr>
       `).join('');
     }
 
-    // --- Event Listeners ---
+    window.openPlayerModal = function(playerName) {
+      currentPlayerName = playerName;
+      modalView = 'averages';
+      modalStats = 'standard';
+      
+      const modal = document.getElementById('playerModal');
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      
+      renderPlayerModal();
+    };
+
+    function closePlayerModal() {
+      const modal = document.getElementById('playerModal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function renderPlayerModal() {
+      if (!currentPlayerName) return;
+
+      document.getElementById('modalPlayerName').textContent = currentPlayerName;
+      
+      const playerGames = gameLogs.filter(g => 
+        g.players.some(p => p.Player === currentPlayerName) && !g.scrimmage
+      );
+      
+      document.getElementById('modalPlayerSubtitle').textContent = 
+        `${playerGames.length} Games Played`;
+
+      renderModalStats();
+      renderModalGameLog();
+    }
+
+    function renderModalStats() {
+      const statsGrid = document.getElementById('modalStatsGrid');
+      
+      let stats;
+      if (currentView === 'scrimmages' && scrimmageStats) {
+        stats = modalView === 'averages' ? scrimmageStats.averages : scrimmageStats.totals;
+      } else if (regularSeasonStats) {
+        stats = modalView === 'averages' ? regularSeasonStats.averages : regularSeasonStats.totals;
+      } else {
+        statsGrid.innerHTML = '<p class="no-games">No stats available</p>';
+        return;
+      }
+
+      const playerStats = stats.find(p => p.Player === currentPlayerName);
+      if (!playerStats) {
+        statsGrid.innerHTML = '<p class="no-games">No stats found for this player</p>';
+        return;
+      }
+
+      let displayStats = [];
+      if (modalStats === 'standard') {
+        if (modalView === 'averages') {
+          displayStats = [
+            { label: 'GP', value: playerStats.GP },
+            { label: 'PPG', value: playerStats.PTS },
+            { label: 'RPG', value: playerStats.REB },
+            { label: 'APG', value: playerStats.AST },
+            { label: 'SPG', value: playerStats.STL },
+            { label: 'BPG', value: playerStats.BLK },
+            { label: 'PF', value: playerStats.PF },
+            { label: 'TO', value: playerStats.TO },
+            { label: 'FG%', value: playerStats['FG%'] },
+            { label: '3PT%', value: playerStats['3PT%'] },
+            { label: 'FT%', value: playerStats['FT%'] }
+          ];
+        } else {
+          displayStats = [
+            { label: 'GP', value: playerStats.GP },
+            { label: 'GS', value: playerStats.GS },
+            { label: 'PTS', value: playerStats.PTS },
+            { label: 'REB', value: playerStats.REB },
+            { label: 'AST', value: playerStats.AST },
+            { label: 'STL', value: playerStats.STL },
+            { label: 'BLK', value: playerStats.BLK },
+            { label: 'PF', value: playerStats.PF },
+            { label: 'TO', value: playerStats.TO },
+            { label: 'FG', value: playerStats.FG },
+            { label: '3PT', value: playerStats['3PT'] },
+            { label: 'FT', value: playerStats.FT }
+          ];
+        }
+      } else {
+        displayStats = [
+          { label: 'GP', value: playerStats.GP },
+          { label: 'eFG%', value: playerStats['eFG%'] },
+          { label: 'TS%', value: playerStats['TS%'] },
+          { label: 'AST/TO', value: playerStats['AST/TO'] }
+        ];
+      }
+
+      statsGrid.innerHTML = displayStats.map(stat => `
+        <div class="stat-card">
+          <div class="stat-label">${stat.label}</div>
+          <div class="stat-value">${stat.value}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderModalGameLog() {
+      const gameLogContainer = document.getElementById('modalGameLog');
+      
+      const playerGames = gameLogs.filter(g => 
+        g.players.some(p => p.Player === currentPlayerName) && !g.scrimmage
+      );
+
+      if (playerGames.length === 0) {
+        gameLogContainer.innerHTML = '<p class="no-games">No games played yet</p>';
+        return;
+      }
+
+      gameLogContainer.innerHTML = playerGames.map(game => {
+        const playerStats = game.players.find(p => p.Player === currentPlayerName);
+        if (!playerStats) return '';
+
+        const dateObj = new Date(game.date);
+        const formattedDate = dateObj.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+
+        return `
+          <div class="game-log-item">
+            <div class="game-log-header">
+              <span class="game-date">Game ${game.gameNumber} - ${formattedDate}</span>
+              <span class="game-record">${game.record || '0-0'}</span>
+            </div>
+            <div class="game-stats-row">
+              <span class="game-stat-mini"><strong>PTS:</strong> ${playerStats.PTS || 0}</span>
+              <span class="game-stat-mini"><strong>REB:</strong> ${playerStats.REB || 0}</span>
+              <span class="game-stat-mini"><strong>AST:</strong> ${playerStats.AST || 0}</span>
+              <span class="game-stat-mini"><strong>STL:</strong> ${playerStats.STL || 0}</span>
+              <span class="game-stat-mini"><strong>BLK:</strong> ${playerStats.BLK || 0}</span>
+              <span class="game-stat-mini"><strong>FG:</strong> ${playerStats.FG || '0-0'}</span>
+              <span class="game-stat-mini"><strong>3PT:</strong> ${playerStats['3PT'] || '0-0'}</span>
+              <span class="game-stat-mini"><strong>FT:</strong> ${playerStats.FT || '0-0'}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     document.querySelectorAll('.btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const view = btn.dataset.view;
@@ -985,6 +1426,46 @@
 
         renderTable();
       });
+    });
+
+    document.querySelectorAll('.modal-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.modalView;
+        const stats = btn.dataset.modalStats;
+
+        if (view) {
+          document.querySelectorAll('[data-modal-view]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          modalView = view;
+          
+          const advancedBtn = document.querySelector('[data-modal-stats="advanced"]');
+          if (view === 'totals') {
+            advancedBtn.style.display = 'none';
+            if (modalStats === 'advanced') {
+              modalStats = 'standard';
+              document.querySelector('[data-modal-stats="standard"]').classList.add('active');
+              advancedBtn.classList.remove('active');
+            }
+          } else {
+            advancedBtn.style.display = 'block';
+          }
+        }
+
+        if (stats) {
+          document.querySelectorAll('[data-modal-stats]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          modalStats = stats;
+        }
+
+        renderModalStats();
+      });
+    });
+
+    document.getElementById('modalClose').addEventListener('click', closePlayerModal);
+    document.getElementById('playerModal').addEventListener('click', (e) => {
+      if (e.target.id === 'playerModal') {
+        closePlayerModal();
+      }
     });
 
     document.addEventListener('DOMContentLoaded', () => {
