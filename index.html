@@ -101,16 +101,36 @@
     }
 
     @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      header {
+        margin-bottom: 20px;
+        padding: 20px 10px;
+      }
+
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .record {
+        font-size: 1.1em;
+        padding: 4px 14px;
+      }
+
       .controls {
         flex-wrap: nowrap;
         justify-content: flex-start;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        scroll-snap-type: x proximity;
         scrollbar-width: none;
         -ms-overflow-style: none;
-        padding-bottom: 10px;
-        gap: 10px;
-        margin-bottom: 15px;
+        padding: 0 4px 8px;
+        gap: 8px;
+        margin-bottom: 10px;
       }
       
       .controls::-webkit-scrollbar {
@@ -119,11 +139,12 @@
       
       .btn-group {
         flex-shrink: 0;
+        scroll-snap-align: start;
       }
       
       .btn {
-        padding: 10px 16px;
-        font-size: 13px;
+        padding: 8px 14px;
+        font-size: 12px;
         white-space: nowrap;
       }
 
@@ -136,31 +157,25 @@
       .mobile-game-selector {
         display: none;
         justify-content: center;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
       }
 
       .mobile-game-selector.visible {
         display: flex;
       }
-
-      /* Scroll indicator */
+      /* Scroll indicator - simple bar */
       .scroll-indicator {
         display: flex;
         justify-content: center;
-        gap: 4px;
-        margin-bottom: 15px;
+        margin-bottom: 12px;
       }
 
       .scroll-indicator::after {
         content: '';
-        font-size: 11px;
-        color: rgba(226, 183, 74, 0.6);
-        animation: pulse 2s ease-in-out infinite;
-      }
-
-      @keyframes pulse {
-        0%, 100% { opacity: 0.4; }
-        50% { opacity: 1; }
+        width: 40px;
+        height: 4px;
+        background: rgba(148, 163, 184, 0.3);
+        border-radius: 2px;
       }
     }
 
@@ -1843,15 +1858,18 @@
     }
 
     function renderLeadersSection() {
-      if (!regularSeasonStats || !regularSeasonStats.averages) {
+      if (!regularSeasonStats || !regularSeasonStats.totals) {
         document.getElementById('leadersGrid').innerHTML = '<p style="color: #64748b; text-align: center; padding: 40px;">No stats available yet.</p>';
         return;
       }
 
-      const stats = regularSeasonStats.averages;
+      const totals = regularSeasonStats.totals;
+      const averages = regularSeasonStats.averages;
       let html = '';
 
       const lowerIsBetter = new Set(['TO']);
+      // Use totals for counting stats (PRASB + TO), averages for percentages/ratios
+      const useTotals = new Set(['PTS', 'REB', 'AST', 'STL', 'BLK', 'TO']);
 
       const parseLeaderValue = (raw, cat) => {
         const str = String(raw ?? '').trim();
@@ -1869,6 +1887,7 @@
 
       LEADER_CATEGORIES.forEach(cat => {
         const isLowerBetter = lowerIsBetter.has(cat);
+        const stats = useTotals.has(cat) ? totals : averages;
         let leader = null;
         let leaderValue = isLowerBetter ? Infinity : -Infinity;
 
@@ -1895,6 +1914,8 @@
             displayValue = leaderValue === Infinity ? '∞' : leaderValue.toFixed(2);
           } else if (cat.includes('%')) {
             displayValue = `${leaderValue.toFixed(1)}%`;
+          } else if (useTotals.has(cat)) {
+            displayValue = Math.round(leaderValue);
           } else {
             displayValue = leaderValue.toFixed(1);
           }
