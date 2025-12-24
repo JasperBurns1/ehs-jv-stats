@@ -77,6 +77,10 @@
       margin-top: 10px;
     }
 
+    .controls-wrapper {
+      position: relative;
+    }
+
     .controls {
       display: flex;
       justify-content: center;
@@ -86,6 +90,14 @@
       animation: fadeIn 0.6s ease 0.2s both;
       position: relative;
       z-index: 2000;
+    }
+
+    .mobile-game-selector {
+      display: none;
+    }
+
+    .scroll-indicator {
+      display: none;
     }
 
     @media (max-width: 768px) {
@@ -98,6 +110,7 @@
         -ms-overflow-style: none;
         padding-bottom: 10px;
         gap: 10px;
+        margin-bottom: 15px;
       }
       
       .controls::-webkit-scrollbar {
@@ -112,6 +125,42 @@
         padding: 10px 16px;
         font-size: 13px;
         white-space: nowrap;
+      }
+
+      /* Hide desktop game selector on mobile */
+      .game-selector-wrapper {
+        display: none !important;
+      }
+
+      /* Show mobile game selector row */
+      .mobile-game-selector {
+        display: none;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .mobile-game-selector.visible {
+        display: flex;
+      }
+
+      /* Scroll indicator */
+      .scroll-indicator {
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+        margin-bottom: 15px;
+      }
+
+      .scroll-indicator::after {
+        content: 'swipe →';
+        font-size: 11px;
+        color: rgba(226, 183, 74, 0.6);
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 0.4; }
+        50% { opacity: 1; }
       }
     }
 
@@ -1235,32 +1284,47 @@
       <div class="last-updated" id="lastUpdated"></div>
     </header>
 
-    <div class="controls">
-      <div class="btn-group">
-        <button class="btn active" data-view="season">Season</button>
-        <button class="btn" data-view="scrimmages">Scrimmages</button>
-        <button class="btn" data-view="game">Game Log</button>
-        <button class="btn" data-view="leaders">Stat Leaders</button>
-        <button class="btn" data-view="pow">Awards</button>
+    <div class="controls-wrapper">
+      <div class="controls">
+        <div class="btn-group">
+          <button class="btn active" data-view="season">Season</button>
+          <button class="btn" data-view="scrimmages">Scrimmages</button>
+          <button class="btn" data-view="game">Game Log</button>
+          <button class="btn" data-view="leaders">Stat Leaders</button>
+          <button class="btn" data-view="pow">Awards</button>
+        </div>
+        
+        <div class="btn-group" id="seasonViewGroup">
+          <button class="btn active" data-subview="averages">Averages</button>
+          <button class="btn" data-subview="totals">Totals</button>
+        </div>
+        
+        <div class="btn-group" id="statsTypeGroup">
+          <button class="btn active" data-stats="standard">Standard</button>
+          <button class="btn" data-stats="advanced">Advanced</button>
+        </div>
+        
+        <div class="game-selector-wrapper" id="gameSelector" style="display: none;">
+          <div class="custom-select" id="customGameSelect">
+            <div class="select-trigger">
+              <span id="selectText">Select a game...</span>
+              <div class="arrow"></div>
+            </div>
+            <div class="select-options" id="selectOptions"></div>
+          </div>
+        </div>
       </div>
       
-      <div class="btn-group" id="seasonViewGroup">
-        <button class="btn active" data-subview="averages">Averages</button>
-        <button class="btn" data-subview="totals">Totals</button>
-      </div>
+      <div class="scroll-indicator"></div>
       
-      <div class="btn-group" id="statsTypeGroup">
-        <button class="btn active" data-stats="standard">Standard</button>
-        <button class="btn" data-stats="advanced">Advanced</button>
-      </div>
-      
-      <div class="game-selector-wrapper" id="gameSelector" style="display: none;">
-        <div class="custom-select" id="customGameSelect">
+      <!-- Mobile-only game selector shown below controls when Game Log is selected -->
+      <div class="mobile-game-selector" id="mobileGameSelector">
+        <div class="custom-select" id="mobileCustomGameSelect">
           <div class="select-trigger">
-            <span id="selectText">Select a game...</span>
+            <span id="mobileSelectText">Select a game...</span>
             <div class="arrow"></div>
           </div>
-          <div class="select-options" id="selectOptions"></div>
+          <div class="select-options" id="mobileSelectOptions"></div>
         </div>
       </div>
     </div>
@@ -1914,9 +1978,15 @@
     }
 
     function setupCustomSelect() {
-      const customSelect = document.getElementById('customGameSelect');
+      // Setup both desktop and mobile selectors
+      setupSingleSelect('customGameSelect', 'selectOptions');
+      setupSingleSelect('mobileCustomGameSelect', 'mobileSelectOptions');
+    }
+
+    function setupSingleSelect(selectId, optionsId) {
+      const customSelect = document.getElementById(selectId);
       const trigger = customSelect.querySelector('.select-trigger');
-      const options = document.getElementById('selectOptions');
+      const options = document.getElementById(optionsId);
       const originalParent = options.parentElement;
 
       let isOpen = false;
@@ -1968,8 +2038,15 @@
         }
       };
 
-      // Expose close so selectGame() can reliably close the menu
-      closeGameSelect = close;
+      // Expose close so selectGame() can reliably close both menus
+      if (selectId === 'customGameSelect') {
+        closeGameSelect = () => {
+          close();
+          // Also close mobile selector if open
+          document.getElementById('mobileCustomGameSelect')?.classList.remove('open');
+          document.getElementById('mobileSelectOptions')?.classList.remove('is-open');
+        };
+      }
 
       trigger.addEventListener('click', (e) => {
         e.preventDefault();
@@ -2097,7 +2174,9 @@
 
     function updateGameSelector() {
       const optionsContainer = document.getElementById('selectOptions');
-      optionsContainer.innerHTML = ''; 
+      const mobileOptionsContainer = document.getElementById('mobileSelectOptions');
+      optionsContainer.innerHTML = '';
+      mobileOptionsContainer.innerHTML = '';
       
       const defaultOption = document.createElement('div');
       defaultOption.className = 'option';
@@ -2107,6 +2186,13 @@
         selectGame(null, 'Select a game...');
       });
       optionsContainer.appendChild(defaultOption);
+      
+      // Clone for mobile
+      const mobileDefaultOption = defaultOption.cloneNode(true);
+      mobileDefaultOption.addEventListener('click', () => {
+        selectGame(null, 'Select a game...');
+      });
+      mobileOptionsContainer.appendChild(mobileDefaultOption);
 
       gameLogs.forEach((game) => {
         const dateObj = new Date(game.date);
@@ -2128,12 +2214,20 @@
         });
         
         optionsContainer.appendChild(option);
+        
+        // Clone for mobile
+        const mobileOption = option.cloneNode(true);
+        mobileOption.addEventListener('click', () => {
+          selectGame(game.id, label);
+        });
+        mobileOptionsContainer.appendChild(mobileOption);
       });
     }
 
     function selectGame(id, label) {
       selectedGameId = id;
       document.getElementById('selectText').textContent = label;
+      document.getElementById('mobileSelectText').textContent = label;
       closeGameSelect();
       
       document.querySelectorAll('.option').forEach(opt => {
@@ -2726,14 +2820,17 @@
             seasonViewGroup.style.display = 'none';
             statsTypeGroup.style.display = 'none';
             gameSelector.style.display = 'flex';
+            document.getElementById('mobileGameSelector').classList.add('visible');
           } else if (view === 'pow' || view === 'leaders') {
             seasonViewGroup.style.display = 'none';
             statsTypeGroup.style.display = 'none';
             gameSelector.style.display = 'none';
+            document.getElementById('mobileGameSelector').classList.remove('visible');
           } else {
             seasonViewGroup.style.display = 'flex';
             statsTypeGroup.style.display = 'flex';
             gameSelector.style.display = 'none';
+            document.getElementById('mobileGameSelector').classList.remove('visible');
           }
         }
 
