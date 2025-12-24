@@ -88,6 +88,33 @@
       z-index: 2000;
     }
 
+    @media (max-width: 768px) {
+      .controls {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        padding-bottom: 10px;
+        gap: 10px;
+      }
+      
+      .controls::-webkit-scrollbar {
+        display: none;
+      }
+      
+      .btn-group {
+        flex-shrink: 0;
+      }
+      
+      .btn {
+        padding: 10px 16px;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+    }
+
     .btn-group {
       background: #0f172a;
       border-radius: 12px;
