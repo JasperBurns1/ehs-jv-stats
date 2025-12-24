@@ -464,6 +464,7 @@
       padding: 8px 16px;
       border-radius: 20px;
       margin-top: 10px;
+      margin-left: 10px;
       font-weight: 700;
       font-size: 0.85em;
       letter-spacing: 0.5px;
@@ -1399,15 +1400,11 @@
           year: 'numeric'
         });
 
-        // Check if this player won best teammate for this game
-        const wonBestTeammate = bestTeammateAwards[game.id] === currentPlayerName;
-
         return `
           <div class="game-log-item">
             <div class="game-log-header">
               <span class="game-date">
                 Game ${game.gameNumber} - ${formattedDate}
-                ${wonBestTeammate ? ' <span style="color: #e2b74a;">🏆</span>' : ''}
               </span>
               <span class="game-record">${game.record || '0-0'}</span>
             </div>
