@@ -451,11 +451,7 @@
       position: relative;
     }
 
-    td.stat-leader::after {
-      content: '👑';
-      font-size: 10px;
-      margin-left: 4px;
-    }
+    /* Crown removed - keeping highlight only */
 
     .player-name {
       font-weight: 600;
@@ -1359,15 +1355,6 @@
       </div>
       <div class="pow-grid" id="powGrid"></div>
       
-      <!-- Stats Disclaimer - Visible right below awards -->
-      <div class="stats-disclaimer-visible" style="margin-top: 25px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 20px;">
-        <div style="color: #ef4444; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 1.1em;">
-          <span>⚠️</span> Important Disclaimer
-        </div>
-        <div style="color: #fca5a5; font-size: 0.95em; line-height: 1.6;">
-          These statistics are <strong style="color: #f8fafc;">purely numerical</strong> and do not fully capture every player's skills, talent, basketball IQ, leadership, defense, or overall contribution to the team. Numbers only tell part of the story.
-        </div>
-      </div>
     </div>
 
     <!-- Stat Leaders Section -->
@@ -1391,6 +1378,23 @@
       <div id="scoreContainer" class="game-score-display" style="display: none;"></div>
     </div>
   </div>
+  
+    <!-- Disclaimers - Moved to bottom of page -->
+    <div style="max-width: 1400px; margin: 30px auto 0; padding: 0 20px;">
+      <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 20px; margin-bottom: 15px; text-align: center;">
+        <div style="color: #f8fafc; font-size: 0.95em; line-height: 1.6;">
+          This website and statistics will <strong style="color: #e2b74a;">NOT</strong> be used to harass, bully, or shame anyone. It is only for distributing stats and making a fun competition out of the season.
+        </div>
+      </div>
+      <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 12px; padding: 20px;">
+        <div style="color: #ef4444; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 1.1em;">
+          <span>⚠️</span> Disclaimer
+        </div>
+        <div style="color: #fca5a5; font-size: 0.95em; line-height: 1.6; text-align: center;">
+          These statistics are <strong style="color: #f8fafc;">purely numerical</strong> and do not fully capture every player's skills, talent, overall contribution to the team, or other factors. Numbers only tell part of the story, so you shouldn't feel bad about these stats (even if someone's stats look bad, they are not a bad player).
+        </div>
+      </div>
+    </div>
 
   <!-- Player Modal -->
   <div class="modal-overlay" id="playerModal">
@@ -2384,8 +2388,7 @@
       document.getElementById('record').textContent = data.record || '0-0';
       if (data.lastUpdated) {
         const date = new Date(data.lastUpdated);
-        document.getElementById('lastUpdated').innerHTML =
-  `Last updated: ${date.toLocaleString()}<br>This website and statistics will NOT be used to harass, bully, or shame anyone. It is only for distributing stats and making a fun competition out of the season<br><br><span style="color: #fca5a5; font-size: 0.9em;">⚠️ <strong>Disclaimer:</strong> These statistics are purely numerical and do not fully capture every player's skills, talent, overall contribution to the team, or other factors. Numbers only tell part of the story, so you shouldn't feel bad about these stats (even if someone's stats look bad, they are not a bad player).</span>`;
+        document.getElementById('lastUpdated').innerHTML = `Last updated: ${date.toLocaleString()}`;
       }
     }
 
