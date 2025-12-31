@@ -1766,100 +1766,7 @@
       }
     }
 
-    function renderPOWSection() {
-      if (allWeeks.length === 0) {
-        document.getElementById('powGrid').innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 40px;">No games played yet to calculate weekly awards.</p>';
-        return;
-      }
-
-      const week = allWeeks[currentWeekIndex];
-      document.getElementById('weekDisplay').textContent = formatWeekDisplay(week.start, week.end);
-      
-      document.getElementById('prevWeek').disabled = currentWeekIndex === 0;
-      document.getElementById('nextWeek').disabled = currentWeekIndex === allWeeks.length - 1;
-
-      const performances = Object.entries(week.performances)
-        .map(([name, perf]) => ({
-          name,
-          avgGmSc: Math.round((perf.totalGmSc / perf.gamesPlayed) * 10) / 10,
-          gamesPlayed: perf.gamesPlayed,
-          avgPts: Math.round((perf.totalPts / perf.gamesPlayed) * 10) / 10,
-          avgReb: Math.round((perf.totalReb / perf.gamesPlayed) * 10) / 10,
-          avgAst: Math.round((perf.totalAst / perf.gamesPlayed) * 10) / 10,
-          isPOW: name === week.powWinner,
-          isMIP: name === week.mipWinner,
-          mipData: name === week.mipWinner ? week.mipData : null
-        }))
-        .sort((a, b) => b.avgGmSc - a.avgGmSc)
-        .slice(0, 6);
-
-      let html = '';
-      
-      // POW Card
-      if (week.powWinner && week.performances[week.powWinner]) {
-        const pow = performances.find(p => p.isPOW);
-        if (pow) {
-          html += `
-            <div class="pow-card winner" onclick="openPlayerModal('${pow.name}')">
-              <div class="pow-card-header">
-                <div class="pow-player-name">🏆 ${pow.name}</div>
-                <div class="pow-gamescore">GmSc: ${pow.avgGmSc}</div>
-              </div>
-              <div style="color: #e2b74a; font-size: 0.9em; margin-bottom: 10px; font-weight: 600;">Performance of the Week</div>
-              <div class="pow-stats">
-                <div class="pow-stat"><div class="pow-stat-value">${pow.avgPts}</div><div class="pow-stat-label">PPG</div></div>
-                <div class="pow-stat"><div class="pow-stat-value">${pow.avgReb}</div><div class="pow-stat-label">RPG</div></div>
-                <div class="pow-stat"><div class="pow-stat-value">${pow.avgAst}</div><div class="pow-stat-label">APG</div></div>
-                <div class="pow-stat"><div class="pow-stat-value">${pow.gamesPlayed}</div><div class="pow-stat-label">GP</div></div>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      // MIP Card
-      if (week.mipWinner && week.mipData) {
-        const mip = performances.find(p => p.isMIP);
-        if (mip) {
-          const impClass = mip.mipData.improvement >= 0 ? '' : 'negative';
-          const impSign = mip.mipData.improvement >= 0 ? '+' : '';
-          html += `
-            <div class="pow-card mip-card" onclick="openPlayerModal('${mip.name}')">
-              <div class="pow-card-header">
-                <div class="pow-player-name">📈 ${mip.name}</div>
-                <div class="pow-gamescore" style="background: #22c55e;">GmSc: ${mip.avgGmSc}</div>
-              </div>
-              <div style="color: #22c55e; font-size: 0.9em; margin-bottom: 10px; font-weight: 600;">Most Improved Player</div>
-              <div class="pow-stats">
-                <div class="pow-stat"><div class="pow-stat-value">${mip.mipData.prevAvg}</div><div class="pow-stat-label">Last Week</div></div>
-                <div class="pow-stat"><div class="pow-stat-value">${mip.mipData.currAvg}</div><div class="pow-stat-label">This Week</div></div>
-                <div class="pow-stat"><div class="pow-stat-value improvement-stat ${impClass}">${impSign}${mip.mipData.improvement}</div><div class="pow-stat-label">Change</div></div>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      // Other top performers
-      performances.filter(p => !p.isPOW && !p.isMIP).forEach(p => {
-        html += `
-          <div class="pow-card" onclick="openPlayerModal('${p.name}')">
-            <div class="pow-card-header">
-              <div class="pow-player-name">${p.name}</div>
-              <div class="pow-gamescore">GmSc: ${p.avgGmSc}</div>
-            </div>
-            <div class="pow-stats">
-              <div class="pow-stat"><div class="pow-stat-value">${p.avgPts}</div><div class="pow-stat-label">PPG</div></div>
-              <div class="pow-stat"><div class="pow-stat-value">${p.avgReb}</div><div class="pow-stat-label">RPG</div></div>
-              <div class="pow-stat"><div class="pow-stat-value">${p.avgAst}</div><div class="pow-stat-label">APG</div></div>
-              <div class="pow-stat"><div class="pow-stat-value">${p.gamesPlayed}</div><div class="pow-stat-label">GP</div></div>
-            </div>
-          </div>
-        `;
-      });
-
-      document.getElementById('powGrid').innerHTML = html;
-    }
+    // renderPOWSection removed - awards page no longer exists
 
     function renderLeadersSection() {
       if (!regularSeasonStats || !regularSeasonStats.totals) {
@@ -2461,21 +2368,11 @@
       const loading = document.querySelector('.loading');
       const scoreContainer = document.getElementById('scoreContainer');
       const statsContainer = document.getElementById('statsContainer');
-      const powSection = document.getElementById('powSection');
       const leadersSection = document.getElementById('leadersSection');
       
       scoreContainer.style.display = 'none';
-      powSection.style.display = 'none';
       leadersSection.style.display = 'none';
       statsContainer.style.display = 'block';
-
-      // Handle special views
-      if (currentView === 'pow') {
-        statsContainer.style.display = 'none';
-        powSection.style.display = 'block';
-        renderPOWSection();
-        return;
-      }
 
       if (currentView === 'leaders') {
         statsContainer.style.display = 'none';
